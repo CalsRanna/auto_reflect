@@ -1,139 +1,310 @@
-# Auto Reflect - 自动Git工作日志生成器
+# Journal - Automatic Git Work Log Generator
 
-一个Dart命令行工具，用于自动扫描用户Code文件夹中的所有Git项目，收集当天的提交记录并生成格式化的工作日志，支持AI智能分析。
+A sophisticated Dart command-line tool that automatically scans all Git projects in your code directory, collects daily commit records, and generates comprehensive work logs with AI-powered analysis.
 
-## 功能特性
+## Features
 
-- 🔄 自动扫描Code文件夹中的所有Git项目
-- 📅 按日期筛选提交记录
-- 📝 生成Markdown格式的工作日志
-- 📁 自动输出到Reflect文件夹
-- 🎯 支持自定义文件夹路径
-- 🔧 支持命令行参数配置
-- 🤖 **新增** AI智能分析工作内容
-- 🔍 **新增** 自动识别当前Git用户
-- 🚫 **新增** 过滤Merge提交记录
-- ⚙️ **新增** 配置AI服务设置
+### Core Functionality
+- 🔍 **Automatic Scanning**: Intelligently scans all Git repositories in your code directory
+- 📅 **Date Filtering**: Filters commit records by specific date or author
+- 📝 **Markdown Reports**: Generates beautifully formatted work logs in Markdown
+- 📁 **Smart Output**: Automatically saves reports to your designated output directory
+- 🎯 **Flexible Paths**: Supports custom code and output directory paths
 
-## 安装依赖
+### AI-Powered Insights
+- 🤖 **Intelligent Analysis**: Uses AI to analyze your commit patterns and work habits
+- 🧠 **Multi-dimensional Insights**: Provides comprehensive analysis across 5 key areas:
+  - **Errors & Issues**: Identify small mistakes and areas for improvement
+  - **Task Planning**: Predict important tasks for the next work day
+  - **Impact Analysis**: Analyze beneficial work for customers and industry
+  - **Problem Identification**: Highlight strange or troubling issues encountered
+  - **Learning Tracking**: Track new tools, methods, and successful experiments
 
+### Advanced Features
+- ⚙️ **Configuration Management**: Flexible configuration with CLI and interactive setup
+- 🔧 **Command-line Interface**: Full-featured CLI with extensive options
+- 🚫 **Merge Filtering**: Automatically filters out merge commit records
+- 👤 **User Recognition**: Automatically identifies Git user across repositories
+- 📊 **Comprehensive Reporting**: Detailed statistics and project breakdowns
+
+## Installation
+
+### Prerequisites
+- Dart SDK 3.5.4 or higher
+- Git command line tools
+- Access to user home directory for configuration
+
+### Setup
 ```bash
+# Clone or navigate to project directory
+cd /path/to/auto_reflect
+
+# Install dependencies
 dart pub get
+
+# Activate globally (optional)
+dart pub global activate --source path .
 ```
 
-## 使用方法
+## Usage
 
-### 基本使用
+### Basic Usage
 
 ```bash
-# 生成今天的工作日志（默认使用AI分析）
-dart run bin/auto_reflect.dart
+# Generate today's work log with AI analysis
+journal reflect
 
-# 详细输出模式
-dart run bin/auto_reflect.dart --verbose
+# Verbose output for detailed processing information
+journal reflect --verbose
 
-# 不使用AI分析
-dart run bin/auto_reflect.dart --no-ai
+# Generate log without AI analysis
+journal reflect --no-ai
 
-# 查看帮助信息
-dart run bin/auto_reflect.dart --help
+# Show help information
+journal --help
+
+# Show version information
+journal --version
 ```
 
-### AI配置
+### Configuration
+
+#### Interactive Setup
+```bash
+# Start interactive configuration wizard
+journal config
+```
+
+#### Command-line Configuration
+```bash
+# Set API key
+journal config --set-api-key "your-api-key-here"
+
+# Set AI service base URL
+journal config --set-base-url "https://api.openai.com/v1"
+
+# Set AI model
+journal config --set-model "gpt-4o"
+
+# Set custom code directory
+journal config --set-code-directory "/custom/path/to/code"
+
+# Set custom output directory
+journal config --set-output-directory "/custom/path/to/output"
+
+# Display current configuration
+journal config --show
+```
+
+#### Configuration File Format
+The configuration is saved as `~/.auto_reflect.yaml`:
+
+```yaml
+# Journal CLI Configuration
+api_key: your-api-key
+base_url: https://api.openai.com/v1
+model: gpt-4o
+code_dir: /Users/username/Code
+output_dir: /Users/username/Reflect
+```
+
+### Advanced Usage
 
 ```bash
-# 配置AI服务
-dart run bin/auto_reflect.dart config
+# Generate work log for specific date
+journal reflect --date 2024-01-15
 
-# 显示当前配置
-dart run bin/auto_reflect.dart show-config
+# Use custom code directory (one-time)
+journal reflect --code-dir /path/to/custom/code
+
+# Use custom output directory (one-time)
+journal reflect --output-dir /path/to/custom/output
+
+# Combine multiple options
+journal reflect --date 2024-01-15 --verbose --no-ai --code-dir /custom/code
 ```
 
-### 高级使用
+### System Health Check
 
 ```bash
-# 指定特定日期
-dart run bin/auto_reflect.dart --date 2024-01-15
-
-# 自定义Code文件夹路径
-dart run bin/auto_reflect.dart --code-dir /path/to/your/code
-
-# 自定义Reflect输出文件夹
-dart run bin/auto_reflect.dart --output-dir /path/to/output
-
-# 组合使用多个参数
-dart run bin/auto_reflect.dart --date 2024-01-15 --verbose --output-dir /path/to/logs
+# Check configuration and network connectivity
+journal doctor
 ```
 
-## 命令行参数
+## Command Reference
 
-- `-h, --help`: 显示帮助信息
-- `-v, --verbose`: 详细输出模式
-- `--no-ai`: 不使用AI分析
-- `--date`: 指定日期 (格式: YYYY-MM-DD)
-- `--code-dir`: Code文件夹路径
-- `--output-dir`: Reflect输出文件夹路径
+### Global Options
+- `-h, --help`: Show help information
+- `-v, --version`: Print version information
 
-## 命令
+### reflect Command
+**Purpose**: Generate daily Git work log
 
-- `config`: 配置AI服务设置
-- `show-config`: 显示当前配置
+**Options**:
+- `-v, --verbose`: Enable verbose output mode
+- `--no-ai`: Disable AI analysis
+- `--date <YYYY-MM-DD>`: Specify analysis date
+- `--code-dir <path>`: Override code directory path
+- `--output-dir <path>`: Override output directory path
 
-## AI分析功能
-
-当配置了AI服务后，程序会自动分析您的Git提交记录，提供以下洞察：
-
-1. **发现的小错误或问题**: 识别可能存在的问题或改进点
-2. **下一个工作日最重要的任务**: 预测明天最需要处理的工作
-3. **对客户或行业有益的事情**: 分析工作对业务的积极影响
-4. **工作亮点**: 突出今天做得好的地方
-
-## AI配置
-
-配置AI服务时需要提供：
-- **Base URL**: AI服务的API地址（如: https://api.openai.com/v1）
-- **Model**: 使用的模型（如: gpt-3.5-turbo, gpt-4）
-- **API Key**: API访问密钥
-
-配置文件会保存在用户主目录的`.auto_reflect`文件中，并设置为仅用户可读写。
-
-## 输出格式
-
-生成的日志文件格式如下：
-
-```markdown
-# 工作日志 - 2024年01月15日
-
-**总提交数**: 42
-**涉及项目**: 3
-
-## 项目1
-
-- **09:30** 修复登录页面样式问题
-- **10:15** 添加用户管理功能
-- **14:20** 优化数据库查询性能
-
-## 项目2
-
-- **11:30** 重构代码结构
-- **13:45** 添加新的API接口
+**Examples**:
+```bash
+journal reflect
+journal reflect --verbose
+journal reflect --date 2024-12-17
+journal reflect --no-ai --code-dir ~/Projects
 ```
 
-## 默认路径
+### config Command
+**Purpose**: Configure AI service settings
 
-- **Code文件夹**: `~/Code`
-- **Reflect文件夹**: `~/Reflect`
-- **输出文件**: `~/Reflect/YYYY-MM-DD.md`
+**Options**:
+- `--set-api-key <key>`: Set API key
+- `--set-base-url <url>`: Set API base URL
+- `--set-model <model>`: Set AI model
+- `--set-code-directory <path>`: Set default code directory
+- `--set-output-directory <path>`: Set default output directory
+- `--show`: Display current configuration
 
-## 系统要求
+**Examples**:
+```bash
+journal config
+journal config --show
+journal config --set-api-key "sk-..."
+journal config --set-model "claude-3-sonnet-20240229"
+```
 
-- Dart SDK 3.0.0 或更高版本
-- Git 命令行工具
-- 访问用户主文件夹的权限
+### doctor Command
+**Purpose**: Check configuration and connection status
 
-## 注意事项
+**Examples**:
+```bash
+journal doctor
+```
 
-1. 确保Code文件夹中的项目都是Git仓库
-2. 程序会自动创建Reflect文件夹（如果不存在）
-3. 每次运行会生成一个新的日志文件，文件名为日期格式
-4. 如果当天没有提交记录，会显示相应的提示信息
+## AI Analysis
+
+The AI analysis provides comprehensive insights into your work patterns:
+
+### Analysis Categories
+
+1. **Errors and Issues**
+   - Small mistakes made during development
+   - Areas for improvement in workflow
+   - Common pitfalls to avoid
+
+2. **Next Important Tasks**
+   - Priority tasks for the following work day
+   - Upcoming deadlines and milestones
+   - Blocking issues that need resolution
+
+3. **Beneficial Work**
+   - Features and improvements that help customers
+   - Industry contributions and best practices
+   - Business value created by your work
+
+4. **Work Highlights**
+   - Unusual or interesting challenges encountered
+   - Industry trends and observations
+   - Troubleshooting complex problems
+
+5. **Learnings and Growth**
+   - New tools and technologies mastered
+   - Successful experiments and approaches
+   - Knowledge gained for future success
+
+### AI Service Requirements
+
+The tool supports any AI service with OpenAI-compatible API:
+- **OpenAI**: GPT-3.5, GPT-4, GPT-4o, etc.
+- **Anthropic Claude**: Via OpenAI-compatible endpoints
+- **Local Models**: Through local AI services
+- **Other Providers**: Any OpenAI-compatible API
+
+## Configuration
+
+### Default Paths
+- **Configuration File**: `~/.auto_reflect.yaml`
+- **Code Directory**: `~/Code` (default)
+- **Output Directory**: `~/Reflect` (default)
+- **Report Files**: `~/Reflect/YYYY-MM-DD.md`
+
+### Configuration Priority
+1. Command-line arguments (highest priority)
+2. Configuration file settings
+3. Default values (lowest priority)
+
+### Environment Variables
+The tool respects standard environment variables:
+- `HOME`: User home directory (Unix/Linux)
+- `USERPROFILE`: User profile directory (Windows)
+
+## Technical Details
+
+### Architecture
+- **Command Pattern**: Modular command structure using Dart's `args` package
+- **Service Layer**: Separated business logic into dedicated services
+- **Configuration Management**: YAML-based configuration with validation
+- **Error Handling**: Comprehensive error handling and user-friendly messages
+
+### Dependencies
+- `args ^2.6.0`: Command-line argument parsing
+- `cli_spin ^1.0.1`: CLI loading animations
+- `http ^1.2.2`: HTTP client for API communication
+- `openai_dart ^0.4.5`: OpenAI API client
+- `package_info_plus ^8.1.1`: Package information
+- `process_run ^1.2.2`: Process execution for Git commands
+- `yaml ^3.1.2`: YAML configuration parsing
+- `intl ^0.18.1`: Internationalization and date formatting
+- `path ^1.8.3`: Path manipulation utilities
+
+### Supported Git Operations
+- Repository discovery in directory trees
+- Commit history extraction by date and author
+- Merge commit filtering
+- User email/author recognition
+- Branch-aware commit analysis
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"No Git commits found today"**
+   - Ensure you have made commits on the specified date
+   - Verify the code directory path is correct
+   - Check Git repository initialization
+
+2. **"AI configuration is invalid or missing"**
+   - Run `journal config` to set up AI service
+   - Verify API key and service URL are correct
+   - Check network connectivity
+
+3. **"Code directory does not exist"**
+   - Create the directory or update the configuration
+   - Use `--code-dir` to specify an alternative path
+
+4. **Git Command Failures**
+   - Ensure Git is installed and accessible
+   - Verify repository permissions
+   - Check for corrupted Git repositories
+
+### Debug Mode
+Use `--verbose` flag to see detailed processing information and debug issues.
+
+## Contributing
+
+This project is designed to be extensible and maintainable. When contributing:
+
+1. Follow the established command pattern
+2. Maintain separation of concerns
+3. Add comprehensive error handling
+4. Update documentation for new features
+5. Test thoroughly across different environments
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For issues, questions, or feature requests, please use the project's issue tracker or contact the maintainers directly.

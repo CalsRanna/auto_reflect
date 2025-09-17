@@ -14,6 +14,18 @@
       "languageVersion": "3.7"
     },
     {
+      "name": "ansi_regex",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/ansi_regex-0.1.2",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "ansi_strip",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/ansi_strip-0.1.1+1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "args",
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/args-2.7.0",
       "packageUri": "lib/",
@@ -32,8 +44,20 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "characters",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/characters-1.4.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
       "name": "cli_config",
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/cli_config-0.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "cli_spin",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/cli_spin-1.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -68,14 +92,56 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "east_asian_width",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/east_asian_width-1.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "emoji_regex",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/emoji_regex-0.0.5",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "fetch_api",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/fetch_api-2.3.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "fetch_client",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/fetch_client-1.1.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "ffi",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/ffi-2.1.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
       "name": "file",
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/file-7.0.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
     {
+      "name": "flutter",
+      "rootUri": "file:///Users/cals/SDK/flutter/packages/flutter",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "flutter_web_plugins",
+      "rootUri": "file:///Users/cals/SDK/flutter/packages/flutter_web_plugins",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
       "name": "freezed_annotation",
-      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/freezed_annotation-3.1.0",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/freezed_annotation-2.4.4",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -135,9 +201,9 @@
     },
     {
       "name": "lints",
-      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/lints-3.0.0",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/lints-5.1.1",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.6"
     },
     {
       "name": "logging",
@@ -152,10 +218,16 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "meta",
-      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/meta-1.17.0",
+      "name": "material_color_utilities",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/material_color_utilities-0.11.1",
       "packageUri": "lib/",
-      "languageVersion": "3.5"
+      "languageVersion": "2.17"
+    },
+    {
+      "name": "meta",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/meta-1.16.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
     },
     {
       "name": "mime",
@@ -171,9 +243,9 @@
     },
     {
       "name": "openai_dart",
-      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/openai_dart-0.5.5",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/openai_dart-0.4.5",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.4"
     },
     {
       "name": "package_config",
@@ -182,16 +254,28 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "package_info_plus",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/package_info_plus-8.3.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "package_info_plus_platform_interface",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/package_info_plus_platform_interface-3.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
+    },
+    {
       "name": "path",
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/path-1.9.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
     {
-      "name": "platform",
-      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/platform-3.1.6",
+      "name": "plugin_platform_interface",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/plugin_platform_interface-2.1.8",
       "packageUri": "lib/",
-      "languageVersion": "3.2"
+      "languageVersion": "3.0"
     },
     {
       "name": "pool",
@@ -200,10 +284,10 @@
       "languageVersion": "2.12"
     },
     {
-      "name": "process",
-      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/process-5.0.5",
+      "name": "process_run",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/process_run-1.2.4",
       "packageUri": "lib/",
-      "languageVersion": "3.5"
+      "languageVersion": "3.7"
     },
     {
       "name": "pub_semver",
@@ -234,6 +318,12 @@
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/shelf_web_socket-3.0.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
+    },
+    {
+      "name": "sky_engine",
+      "rootUri": "file:///Users/cals/SDK/flutter/bin/cache/pkg/sky_engine",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
     },
     {
       "name": "source_map_stack_trace",
@@ -272,6 +362,18 @@
       "languageVersion": "3.1"
     },
     {
+      "name": "string_width",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/string_width-0.1.5",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
+      "name": "synchronized",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/synchronized-3.4.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
       "name": "term_glyph",
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/term_glyph-1.2.2",
       "packageUri": "lib/",
@@ -300,6 +402,12 @@
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/typed_data-1.4.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
+    },
+    {
+      "name": "vector_math",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/vector_math-2.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
     },
     {
       "name": "vm_service",
@@ -338,6 +446,12 @@
       "languageVersion": "3.0"
     },
     {
+      "name": "win32",
+      "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/win32-5.14.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
       "name": "yaml",
       "rootUri": "file:///Users/cals/.pub-cache/hosted/pub.dev/yaml-3.1.3",
       "packageUri": "lib/",
@@ -347,7 +461,7 @@
       "name": "auto_reflect",
       "rootUri": "../",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.5"
     }
   ],
   "generator": "pub",

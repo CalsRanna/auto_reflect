@@ -22,6 +22,7 @@ class DoctorCommand extends Command {
     _checkAPIKey(config);
     _checkBaseUrl(config);
     _checkModel(config);
+    _checkIgnore(config);
     await _checkNetwork(config);
     _spinner.stop();
     if (_errors.isNotEmpty) {
@@ -56,6 +57,16 @@ class DoctorCommand extends Command {
   void _checkModel(Config config) {
     if (config.model.isEmpty) return _fail('Model not set');
     _spinner.success('Model: ${config.model}');
+    _spinner.start();
+  }
+
+  void _checkIgnore(Config config) {
+    var ignore = config.ignore;
+    if (ignore.isEmpty) {
+      _spinner.success('Ignore folders: (none)');
+    } else {
+      _spinner.success('Ignore folders: $ignore');
+    }
     _spinner.start();
   }
 

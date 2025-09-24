@@ -6,10 +6,11 @@ A sophisticated Dart command-line tool that automatically scans all Git projects
 
 ### Core Functionality
 - 🔍 **Automatic Scanning**: Intelligently scans all Git repositories in your code directory
-- 📅 **Date Filtering**: Filters commit records by specific date or author
+- 📅 **Date Filtering**: Filters commit records by specific date and author
 - 📝 **Markdown Reports**: Generates beautifully formatted work logs in Markdown
 - 📁 **Smart Output**: Automatically saves reports to your designated output directory
 - 🎯 **Flexible Paths**: Supports custom code and output directory paths
+- 🚫 **Folder Ignore**: Smart filtering to skip specific folders during scanning
 
 ### AI-Powered Insights
 - 🤖 **Intelligent Analysis**: Uses AI to analyze your commit patterns and work habits
@@ -26,6 +27,7 @@ A sophisticated Dart command-line tool that automatically scans all Git projects
 - 🚫 **Merge Filtering**: Automatically filters out merge commit records
 - 👤 **User Recognition**: Automatically identifies Git user across repositories
 - 📊 **Comprehensive Reporting**: Detailed statistics and project breakdowns
+- 🔀 **Ignore Merging**: Intelligently merges configuration file and command-line ignore settings
 
 ## Installation
 
@@ -67,6 +69,25 @@ journal --help
 journal --version
 ```
 
+### Folder Ignore Feature
+
+```bash
+# Ignore specific folders (comma-separated)
+journal reflect --ignore "temp,node_modules,.git"
+
+# Combine with other options
+journal reflect --ignore "temp,node_modules" --verbose
+
+# Set ignore folders in configuration
+journal config --set-ignore "temp,node_modules,.git"
+```
+
+**Ignore Logic**:
+- Command-line `--ignore` parameter and configuration file `ignore` setting are automatically merged
+- Duplicate entries are automatically removed
+- Spaces in folder names are automatically trimmed
+- Ignored projects are shown in statistics but excluded from AI analysis and final reports
+
 ### Configuration
 
 #### Interactive Setup
@@ -92,6 +113,9 @@ journal config --set-code-directory "/custom/path/to/code"
 # Set custom output directory
 journal config --set-output-directory "/custom/path/to/output"
 
+# Set ignore folders
+journal config --set-ignore "temp,node_modules,.git"
+
 # Display current configuration
 journal config --show
 ```
@@ -106,6 +130,7 @@ base_url: https://api.openai.com/v1
 model: gpt-4o
 code_dir: /Users/username/Code
 output_dir: /Users/username/Reflect
+ignore: temp,node_modules,.git
 ```
 
 ### Advanced Usage
@@ -120,8 +145,8 @@ journal reflect --code-dir /path/to/custom/code
 # Use custom output directory (one-time)
 journal reflect --output-dir /path/to/custom/output
 
-# Combine multiple options
-journal reflect --date 2024-01-15 --verbose --no-ai --code-dir /custom/code
+# Combine multiple options with ignore
+journal reflect --date 2024-01-15 --verbose --ignore "temp,.git" --code-dir /custom/code
 ```
 
 ### System Health Check
@@ -146,6 +171,7 @@ journal doctor
 - `--date <YYYY-MM-DD>`: Specify analysis date
 - `--code-dir <path>`: Override code directory path
 - `--output-dir <path>`: Override output directory path
+- `--ignore <folders>`: Comma-separated list of folders to ignore
 
 **Examples**:
 ```bash
@@ -153,6 +179,7 @@ journal reflect
 journal reflect --verbose
 journal reflect --date 2024-12-17
 journal reflect --no-ai --code-dir ~/Projects
+journal reflect --ignore "temp,node_modules"
 ```
 
 ### config Command
@@ -164,6 +191,7 @@ journal reflect --no-ai --code-dir ~/Projects
 - `--set-model <model>`: Set AI model
 - `--set-code-directory <path>`: Set default code directory
 - `--set-output-directory <path>`: Set default output directory
+- `--set-ignore <folders>`: Set default ignore folders (comma-separated)
 - `--show`: Display current configuration
 
 **Examples**:
@@ -172,6 +200,7 @@ journal config
 journal config --show
 journal config --set-api-key "sk-..."
 journal config --set-model "claude-3-sonnet-20240229"
+journal config --set-ignore "temp,node_modules,.git"
 ```
 
 ### doctor Command
@@ -221,6 +250,14 @@ The tool supports any AI service with OpenAI-compatible API:
 - **Local Models**: Through local AI services
 - **Other Providers**: Any OpenAI-compatible API
 
+### AI Analysis Prompt
+
+The tool uses a sophisticated engineering-focused prompt that:
+- Analyzes commit records from a professional software development consultant perspective
+- Uses concise, objective tone avoiding self-praise and exaggeration
+- Returns structured JSON format with 5 analysis categories
+- Handles empty results gracefully with empty arrays
+
 ## Configuration
 
 ### Default Paths
@@ -234,6 +271,11 @@ The tool supports any AI service with OpenAI-compatible API:
 2. Configuration file settings
 3. Default values (lowest priority)
 
+### Ignore Folder Processing
+- **Merging Strategy**: Command-line ignore and configuration ignore are merged with automatic deduplication
+- **Format Processing**: Comma-separated values with automatic space trimming
+- **Display**: Ignored projects appear in statistics with "(ignored)" marker but are excluded from AI analysis
+
 ### Environment Variables
 The tool respects standard environment variables:
 - `HOME`: User home directory (Unix/Linux)
@@ -243,27 +285,89 @@ The tool respects standard environment variables:
 
 ### Architecture
 - **Command Pattern**: Modular command structure using Dart's `args` package
-- **Service Layer**: Separated business logic into dedicated services
+- **Service Layer**: Separated business logic into dedicated services:
+  - `GitService`: Git operations and repository scanning
+  - `Generator`: AI analysis and commit processing
+  - `ReportService`: Markdown report generation
 - **Configuration Management**: YAML-based configuration with validation
-- **Error Handling**: Comprehensive error handling and user-friendly messages
+- **Error Handling**: Comprehensive error handling with user-friendly messages
+
+### Project Structure
+```
+lib/
+├── commands/           # Command implementations
+│   ├── reflect_command.dart    # Main work log generation
+│   ├── config_command.dart     # Configuration management
+│   ├── doctor_command.dart     # System health checks
+│   └── version_command.dart    # Version information
+├── services/           # Business logic services
+│   ├── git_service.dart        # Git repository operations
+│   ├── generator.dart          # AI analysis processing
+│   └── report_service.dart     # Report generation
+├── models/             # Data models
+│   ├── config.dart            # Configuration data model
+│   ├── git_commit.dart        # Git commit data model
+│   └── ai_analysis.dart       # AI analysis results
+└── utils/              # Utility functions
+    ├── logger.dart            # Logging utilities
+    └── file_utils.dart        # File system operations
+```
 
 ### Dependencies
 - `args ^2.6.0`: Command-line argument parsing
 - `cli_spin ^1.0.1`: CLI loading animations
 - `http ^1.2.2`: HTTP client for API communication
 - `openai_dart ^0.4.5`: OpenAI API client
-- `package_info_plus ^8.1.1`: Package information
 - `process_run ^1.2.2`: Process execution for Git commands
 - `yaml ^3.1.2`: YAML configuration parsing
 - `intl ^0.18.1`: Internationalization and date formatting
 - `path ^1.8.3`: Path manipulation utilities
 
-### Supported Git Operations
-- Repository discovery in directory trees
-- Commit history extraction by date and author
-- Merge commit filtering
-- User email/author recognition
-- Branch-aware commit analysis
+### Key Implementation Details
+
+#### Git Integration
+- **Repository Discovery**: Scans code directory for `.git` folders recursively
+- **Commit Filtering**: Filters by date, author, and excludes merge commits
+- **User Detection**: Automatically detects current Git user configuration
+- **Format Extraction**: Uses `git log --pretty=format:` for structured data extraction
+
+#### Ignore System
+- **Smart Merging**: Combines configuration and command-line ignore settings
+- **Efficient Filtering**: Filters projects before AI analysis and report generation
+- **Visual Feedback**: Shows ignored projects in statistics with clear marking
+
+#### AI Analysis
+- **Structured Output**: Enforces JSON response format for reliable parsing
+- **Error Resilience**: Gracefully handles JSON parsing failures
+- **Professional Tone**: Engineering-focused prompt for objective analysis
+- **Context Preservation**: Includes project context in AI analysis
+
+## Report Format
+
+Generated reports follow this structure:
+
+```markdown
+# Reflect Today - YYYY/MM/dd
+
+## Work Summary
+
+### Project1
+- Commit message 1
+- Commit message 2
+
+### Project2
+- Commit message 3
+
+## What did I learn for the purpose of future winning...
+- Learning point 1
+- Learning point 2
+
+## Things at work or in the industry that are strange...
+- Issue observation 1
+- Issue observation 2
+
+[Other AI analysis sections...]
+```
 
 ## Troubleshooting
 
@@ -277,7 +381,7 @@ The tool respects standard environment variables:
 2. **"AI configuration is invalid or missing"**
    - Run `journal config` to set up AI service
    - Verify API key and service URL are correct
-   - Check network connectivity
+   - Check network connectivity with `journal doctor`
 
 3. **"Code directory does not exist"**
    - Create the directory or update the configuration
@@ -288,18 +392,35 @@ The tool respects standard environment variables:
    - Verify repository permissions
    - Check for corrupted Git repositories
 
+5. **Ignore Folders Not Working**
+   - Verify folder names match exactly (case-sensitive)
+   - Check that ignore setting is saved in configuration
+   - Use `journal config --show` to verify ignore settings
+
 ### Debug Mode
 Use `--verbose` flag to see detailed processing information and debug issues.
 
-## Contributing
+### Health Check
+Run `journal doctor` to verify:
+- API configuration validity
+- Network connectivity to AI service
+- Configuration file integrity
+- Ignore folder settings
 
-This project is designed to be extensible and maintainable. When contributing:
+## Development
 
-1. Follow the established command pattern
-2. Maintain separation of concerns
-3. Add comprehensive error handling
-4. Update documentation for new features
-5. Test thoroughly across different environments
+### Adding New Features
+1. Follow the established command pattern in `lib/commands/`
+2. Add new services in `lib/services/` for business logic
+3. Create appropriate data models in `lib/models/`
+4. Update configuration schema if needed
+5. Add comprehensive error handling
+
+### Testing
+- Use `dart analyze` for static code analysis
+- Test with various Git repository configurations
+- Verify ignore functionality with different folder patterns
+- Test AI analysis with different commit patterns
 
 ## License
 

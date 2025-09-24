@@ -21,108 +21,112 @@ void handleError(String message) {
 }
 
 // 参考auto_commit的格式显示项目统计信息
-Future<String> _getProjectStats(
-    Map<String, List<GitCommit>> projectCommits) async {
+Future<String> _getProjectStats(Map<String, List<GitCommit>> projectCommits,
+    Map<String, List<GitCommit>> ignoredProjectsWithCommits) async {
   var buffer = StringBuffer();
   buffer.write('\n');
 
+  // 计算最长的项目路径长度，用于对齐
+  int maxPathLength = 0;
+
+  // 检查有commit的项目路径
+  for (var entry in projectCommits.entries) {
+    final commits = entry.value;
+    final projectPath = commits.isNotEmpty ? commits.first.projectPath : '';
+    if (projectPath.length > maxPathLength) {
+      maxPathLength = projectPath.length;
+    }
+  }
+
+  // 检查被忽略的项目路径
+  for (var entry in ignoredProjectsWithCommits.entries) {
+    final commits = entry.value;
+    final projectPath = commits.isNotEmpty ? commits.first.projectPath : '';
+    if (projectPath.length > maxPathLength) {
+      maxPathLength = projectPath.length;
+    }
+  }
+
+  // 创建一个统一的列表，包含所有项目（有commit的和被忽略的）
+  final allItems = <Map<String, dynamic>>[];
+
+  // 添加有commit的项目
   for (var entry in projectCommits.entries) {
     final project = entry.key;
     final commits = entry.value;
+    final projectPath = commits.isNotEmpty ? commits.first.projectPath : '';
 
-    // 更详细的提交类型分析
-    final fixCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('fix:') ||
-            c.message.toLowerCase().startsWith('fix('))
-        .length;
+    allItems.add({
+      'path': projectPath,
+      'name': project,
+      'type': 'commit',
+      'commits': commits.length,
+    });
+  }
 
-    final featCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('feat:') ||
-            c.message.toLowerCase().startsWith('feat('))
-        .length;
+  // 添加被忽略的项目
+  for (var entry in ignoredProjectsWithCommits.entries) {
+    final project = entry.key;
+    final commits = entry.value;
+    final projectPath = commits.isNotEmpty ? commits.first.projectPath : '';
 
-    final refactorCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('refactor:') ||
-            c.message.toLowerCase().startsWith('refactor('))
-        .length;
+    allItems.add({
+      'path': projectPath,
+      'name': project,
+      'type': 'ignored',
+      'commits': commits.length,
+    });
+  }
 
-    final testCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('test:') ||
-            c.message.toLowerCase().startsWith('test('))
-        .length;
+  // 按项目名排序
+  allItems.sort((a, b) => a['name'].compareTo(b['name']));
 
-    final docsCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('docs:') ||
-            c.message.toLowerCase().startsWith('docs('))
-        .length;
+  // 统一输出
+  for (var item in allItems) {
+    final projectPath = item['path'] as String;
+    final type = item['type'] as String;
 
-    final styleCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('style:') ||
-            c.message.toLowerCase().startsWith('style('))
-        .length;
+    // 计算需要的空格数量来实现对齐
+    final padding = maxPathLength - projectPath.length + 2; // +2 是为了增加一些间距
 
-    final choreCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('chore:') ||
-            c.message.toLowerCase().startsWith('chore('))
-        .length;
-
-    final buildCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('build:') ||
-            c.message.toLowerCase().startsWith('build('))
-        .length;
-
-    final ciCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('ci:') ||
-            c.message.toLowerCase().startsWith('ci('))
-        .length;
-
-    final perfCount = commits
-        .where((c) =>
-            c.message.toLowerCase().startsWith('perf:') ||
-            c.message.toLowerCase().startsWith('perf('))
-        .length;
-
-    final otherCount = commits.length -
-        fixCount -
-        featCount -
-        refactorCount -
-        testCount -
-        docsCount -
-        styleCount -
-        choreCount -
-        buildCount -
-        ciCount -
-        perfCount;
-
-    // 项目名称用绿色，显示详细的提交类型统计
-    var stats = '\x1B[32m$project\x1B[0m';
-
-    if (fixCount > 0) stats += ' \x1B[31mfix $fixCount\x1B[0m';
-    if (featCount > 0) stats += ' \x1B[32mfeat $featCount\x1B[0m';
-    if (refactorCount > 0) stats += ' refactor $refactorCount';
-    if (testCount > 0) stats += ' test $testCount';
-    if (docsCount > 0) stats += ' docs $docsCount';
-    if (styleCount > 0) stats += ' style $styleCount';
-    if (choreCount > 0) stats += ' chore $choreCount';
-    if (buildCount > 0) stats += ' build $buildCount';
-    if (ciCount > 0) stats += ' ci $ciCount';
-    if (perfCount > 0) stats += ' perf $perfCount';
-    if (otherCount > 0) stats += ' other $otherCount';
-
-    buffer.write('$stats\n');
+    if (type == 'commit') {
+      final commits = item['commits'] as int;
+      // 输出项目路径和对齐的commit总数
+      buffer.write(
+          '  $projectPath${' ' * padding}\x1B[32m$commits commits\x1B[0m\n');
+    } else {
+      final commits = item['commits'] as int;
+      // 输出被忽略的项目路径和对齐的ignored标记，同时显示实际commit数量
+      buffer.write(
+          '  $projectPath${' ' * padding}\x1B[90m$commits commits (ignored)\x1B[0m\n');
+    }
   }
 
   await Future.delayed(const Duration(milliseconds: 500));
   return buffer.toString();
+}
+
+// 合并ignore列表的工具方法
+List<String> _mergeIgnoreLists(String configIgnore, String? commandLineIgnore) {
+  final ignoreSet = <String>{};
+
+  // 添加全局配置中的 ignore
+  if (configIgnore.isNotEmpty) {
+    final configIgnores =
+        configIgnore.split(',').map((f) => f.trim()).where((f) => f.isNotEmpty);
+    ignoreSet.addAll(configIgnores);
+  }
+
+  // 添加命令行参数中的 ignore
+  if (commandLineIgnore != null && commandLineIgnore.isNotEmpty) {
+    final commandIgnores = commandLineIgnore
+        .split(',')
+        .map((f) => f.trim())
+        .where((f) => f.isNotEmpty);
+    ignoreSet.addAll(commandIgnores);
+  }
+
+  return ignoreSet.toList();
 }
 
 class ReflectCommand extends Command {
@@ -140,6 +144,9 @@ class ReflectCommand extends Command {
     argParser.addOption('date', help: 'Specify date (format: YYYY-MM-DD)');
     argParser.addOption('code-dir', help: 'Code directory path');
     argParser.addOption('output-dir', help: 'Reflect output directory path');
+    argParser.addOption('ignore',
+        help:
+            'Ignore specific folders (comma-separated, e.g., "temp,node_modules")');
   }
 
   @override
@@ -151,11 +158,12 @@ class ReflectCommand extends Command {
     final date = argResults?['date'];
     final codeDir = argResults?['code-dir'];
     final outputDir = argResults?['output-dir'];
+    final ignore = argResults?['ignore'];
 
     final logger = Logger(verbose: verbose);
 
     try {
-      _spinner.start('Scanning Git projects');
+      _spinner.start('Scanning repositories');
       final gitService = GitService(verbose: verbose);
       await gitService.initialize();
       _spinner.success();
@@ -164,15 +172,13 @@ class ReflectCommand extends Command {
       final codeFolderPath = codeDir ?? config.codeDirectory;
       final reflectFolderPath = outputDir ?? config.outputDirectory;
 
-      if (verbose) {
-        logger.log('Code directory: $codeFolderPath');
-        logger.log('Reflect directory: $reflectFolderPath');
-      }
+      // 默认显示配置信息
+      logger.log('Code directory: $codeFolderPath');
+      logger.log('Reflect directory: $reflectFolderPath');
 
       final today = date ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
-      if (verbose) {
-        logger.log('Analysis date: $today');
-      }
+      // 默认显示分析日期
+      logger.log('Analysis date: $today');
 
       final codeDirectory = Directory(codeFolderPath);
       if (!await codeDirectory.exists()) {
@@ -181,16 +187,36 @@ class ReflectCommand extends Command {
 
       await FileUtils.ensureDirectoryExists(reflectFolderPath);
 
-      final projectCommits =
-          await gitService.scanGitProjects(codeDirectory, today);
+      final allProjectCommits = await gitService.scanGitProjects(
+          codeDirectory, today,
+          config: config, ignore: ignore);
 
-      if (projectCommits.isEmpty) {
+      // 合并全局配置和命令行参数的 ignore 设置
+      final allIgnores = _mergeIgnoreLists(config.ignore, ignore);
+
+      // 分离被忽略和未被忽略的项目
+      final projectCommits = <String, List<GitCommit>>{};
+      final ignoredProjectsWithCommits = <String, List<GitCommit>>{};
+
+      for (var entry in allProjectCommits.entries) {
+        final projectName = entry.key;
+        final commits = entry.value;
+
+        if (allIgnores.contains(projectName)) {
+          ignoredProjectsWithCommits[projectName] = commits;
+        } else {
+          projectCommits[projectName] = commits;
+        }
+      }
+
+      if (projectCommits.isEmpty && ignoredProjectsWithCommits.isEmpty) {
         showSuccess('No Git commits found today');
         return;
       }
 
       // 显示项目统计信息，参考auto_commit的格式
-      var stat = await _getProjectStats(projectCommits);
+      var stat =
+          await _getProjectStats(projectCommits, ignoredProjectsWithCommits);
       stdout.writeln(stat);
 
       AIAnalysisResult? aiAnalysis;
@@ -203,6 +229,7 @@ class ReflectCommand extends Command {
         } else {
           try {
             _spinner.start('Generating reflect');
+            // 只使用未被忽略的项目进行AI分析
             aiAnalysis =
                 await Generator.analyzeCommits(projectCommits, config: config);
             _spinner.success();
@@ -215,7 +242,7 @@ class ReflectCommand extends Command {
 
       final reportService = ReportService();
       final report = await reportService.generateReport(
-          projectCommits,
+          projectCommits, // 只使用未被忽略的项目生成报告
           today,
           aiAnalysis ??
               AIAnalysisResult(

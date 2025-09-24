@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:process_run/process_run.dart';
 import 'package:path/path.dart' as path;
 import '../models/git_commit.dart';
+import '../models/config.dart';
 
 class GitService {
   final bool verbose;
@@ -19,21 +20,23 @@ class GitService {
   String? get currentUserName => _currentUserName;
 
   Future<Map<String, List<GitCommit>>> scanGitProjects(
-      Directory codeDir, String date) async {
+    Directory codeDir,
+    String date, {
+    required Config config,
+    String? ignore,
+  }) async {
     final commits = <String, List<GitCommit>>{};
 
     await for (var entity
         in codeDir.list(recursive: false, followLinks: false)) {
       if (entity is Directory) {
+        final projectName = path.basename(entity.path);
+
         final gitDir = Directory(path.join(entity.path, '.git'));
         if (await gitDir.exists()) {
-          if (verbose) {
-            stdout.writeln('Scanning Git project: ${entity.path}');
-          }
-
           final projectCommits = await _getCommitsForDate(entity.path, date);
           if (projectCommits.isNotEmpty) {
-            commits[path.basename(entity.path)] = projectCommits;
+            commits[projectName] = projectCommits;
           }
         }
       }
@@ -60,9 +63,8 @@ class GitService {
             'Warning: Cannot get Git user configuration, will get all users\' commit records');
       }
     } catch (e) {
-      if (verbose) {
-        stdout.writeln('Error getting Git user configuration: $e');
-      }
+      // 默认显示获取 Git 用户配置的错误信息
+      stdout.writeln('Error getting Git user configuration: $e');
     }
   }
 
@@ -81,30 +83,16 @@ class GitService {
         gitCommand.insert(1, '--author=$_currentUserName');
       }
 
-      if (verbose) {
-        stdout.writeln('Project path: $projectPath');
-        stdout.writeln('Git command: git ${gitCommand.join(' ')}');
-      }
-
       var shell = Shell(verbose: false, workingDirectory: projectPath);
       var fullCommand = 'git ${gitCommand.join(' ')}';
       var result = await shell.run(fullCommand);
 
       if (result.first.exitCode != 0) {
-        if (verbose) {
-          stdout.writeln(
-              'Failed to get Git log (${path.basename(projectPath)}): ${result.first.stderr}');
-        }
         return [];
       }
 
       final commits = <GitCommit>[];
       final lines = result.first.stdout.toString().split('\n');
-
-      if (verbose) {
-        stdout.writeln(
-            'Found ${lines.length - 1} log lines (${path.basename(projectPath)})');
-      }
 
       for (final line in lines) {
         if (line.trim().isEmpty) continue;
@@ -124,10 +112,6 @@ class GitService {
 
       return commits;
     } catch (e) {
-      if (verbose) {
-        stdout.writeln(
-            'Error getting commit records (${path.basename(projectPath)}): $e');
-      }
       return [];
     }
   }

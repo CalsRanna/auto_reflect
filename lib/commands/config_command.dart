@@ -16,11 +16,12 @@ void showSuccess(String message) {
 class ConfigCommand extends Command {
   ConfigCommand() {
     argParser
-      ..addOption('set-api-key', help: 'Set the API key')
-      ..addOption('set-base-url', help: 'Set the API base url')
-      ..addOption('set-model', help: 'Set the model')
-      ..addOption('set-code-directory', help: 'Set the code directory path')
-      ..addOption('set-output-directory', help: 'Set the output directory path')
+      ..addOption('set-api-key', help: 'Set API key')
+      ..addOption('set-base-url', help: 'Set API base url')
+      ..addOption('set-model', help: 'Set model')
+      ..addOption('set-code-directory', help: 'Set code directory path')
+      ..addOption('set-output-directory', help: 'Set output directory path')
+      ..addOption('set-ignore', help: 'Set ignore folders (comma-separated)')
       ..addFlag('show', help: 'Show current configuration', negatable: false);
   }
 
@@ -40,6 +41,8 @@ class ConfigCommand extends Command {
       return _setCodeDirectory(config);
     if (argResults?['set-output-directory'] != null)
       return _setOutputDirectory(config);
+    if (argResults?['set-ignore'] != null)
+      return _setIgnore(config);
     if (argResults?['show'] == true) return _show(config);
     return _interactiveSetup();
   }
@@ -76,6 +79,9 @@ class ConfigCommand extends Command {
       outputDirInput = defaultConfig.outputDirectory;
     }
 
+    stdout.write('Enter Ignore Folders (comma-separated, optional): ');
+    var ignoreInput = stdin.readLineSync()?.trim() ?? '';
+
     if (baseUrl.isEmpty || model.isEmpty || apiKey.isEmpty) {
       handleError('API Key, Base URL, and Model are required');
     }
@@ -87,6 +93,7 @@ class ConfigCommand extends Command {
         apiKey: apiKey,
         codeDirectory: codeDirInput,
         outputDirectory: outputDirInput,
+        ignore: ignoreInput,
       );
 
       await config.save();
@@ -131,6 +138,13 @@ class ConfigCommand extends Command {
     _show(config);
   }
 
+  Future<void> _setIgnore(Config config) async {
+    config.ignore = argResults!['set-ignore'].toString();
+    await config.save();
+    stdout.writeln('\nIgnore folders set successfully');
+    _show(config);
+  }
+
   void _show(Config config) {
     stdout.writeln('Journal CLI Configuration\n');
     var apiKey = config.apiKey;
@@ -145,6 +159,7 @@ class ConfigCommand extends Command {
     stdout.writeln('Base URL: ${config.baseUrl}');
     stdout.writeln('Model: ${config.model}');
     stdout.writeln('Code Directory: ${config.codeDirectory}');
-    stdout.writeln('Output Directory: ${config.outputDirectory}\n');
+    stdout.writeln('Output Directory: ${config.outputDirectory}');
+    stdout.writeln('Ignore Folders: ${config.ignore.isEmpty ? '(none)' : config.ignore}\n');
   }
 }

@@ -10,6 +10,7 @@ class Config {
   late String model;
   late String codeDirectory;
   late String outputDirectory;
+  late String ignore;
 
   Config({
     this.apiKey = '',
@@ -17,6 +18,7 @@ class Config {
     this.model = 'gpt-4o',
     this.codeDirectory = '',
     this.outputDirectory = '',
+    this.ignore = '',
   });
 
   String? getConfigPath() {
@@ -41,6 +43,7 @@ class Config {
       'model: $model',
       'code_dir: $codeDirectory',
       'output_dir: $outputDirectory',
+      'ignore: $ignore',
     ];
     await file.writeAsString(parts.join('\n'));
   }
@@ -70,6 +73,7 @@ class Config {
       model: yaml['model']?.toString() ?? 'gpt-4o',
       codeDirectory: yaml['code_dir']?.toString() ?? getDefaultCodeDir(),
       outputDirectory: yaml['output_dir']?.toString() ?? getDefaultOutputDir(),
+      ignore: yaml['ignore']?.toString() ?? '',
     );
   }
 
@@ -80,6 +84,7 @@ class Config {
       model: 'gpt-4o',
       codeDirectory: getDefaultCodeDir(),
       outputDirectory: getDefaultOutputDir(),
+      ignore: '',
     );
   }
 

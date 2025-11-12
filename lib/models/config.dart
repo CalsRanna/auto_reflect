@@ -11,6 +11,7 @@ class Config {
   late String codeDirectory;
   late String outputDirectory;
   late String ignore;
+  late String language;
 
   Config({
     this.apiKey = '',
@@ -19,7 +20,28 @@ class Config {
     this.codeDirectory = '',
     this.outputDirectory = '',
     this.ignore = '',
+    this.language = 'en-US',
   });
+
+  Config copyWith({
+    String? apiKey,
+    String? baseUrl,
+    String? model,
+    String? codeDirectory,
+    String? outputDirectory,
+    String? ignore,
+    String? language,
+  }) {
+    return Config(
+      apiKey: apiKey ?? this.apiKey,
+      baseUrl: baseUrl ?? this.baseUrl,
+      model: model ?? this.model,
+      codeDirectory: codeDirectory ?? this.codeDirectory,
+      outputDirectory: outputDirectory ?? this.outputDirectory,
+      ignore: ignore ?? this.ignore,
+      language: language ?? this.language,
+    );
+  }
 
   String? getConfigPath() {
     var homeDirectory = Platform.environment['HOME'];
@@ -44,6 +66,7 @@ class Config {
       'code_dir: $codeDirectory',
       'output_dir: $outputDirectory',
       'ignore: $ignore',
+      'language: $language',
     ];
     await file.writeAsString(parts.join('\n'));
   }
@@ -74,6 +97,7 @@ class Config {
       codeDirectory: yaml['code_dir']?.toString() ?? getDefaultCodeDir(),
       outputDirectory: yaml['output_dir']?.toString() ?? getDefaultOutputDir(),
       ignore: yaml['ignore']?.toString() ?? '',
+      language: yaml['language']?.toString() ?? 'en-US',
     );
   }
 
@@ -85,6 +109,7 @@ class Config {
       codeDirectory: getDefaultCodeDir(),
       outputDirectory: getDefaultOutputDir(),
       ignore: '',
+      language: 'en-US',
     );
   }
 

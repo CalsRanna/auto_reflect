@@ -1,8 +1,7 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-
-import '../models/config.dart';
+import 'package:auto_reflect/models/config.dart';
 
 void handleError(String message) {
   stderr.writeln('❌ $message');
@@ -22,6 +21,11 @@ class ConfigCommand extends Command {
       ..addOption('set-code-directory', help: 'Set code directory path')
       ..addOption('set-output-directory', help: 'Set output directory path')
       ..addOption('set-ignore', help: 'Set ignore folders (comma-separated)')
+      ..addOption(
+        'set-language',
+        help:
+            'Set default language for reports (e.g., "zh-CN", "en-US", "ja-JP")',
+      )
       ..addFlag('show', help: 'Show current configuration', negatable: false);
   }
 
@@ -41,8 +45,8 @@ class ConfigCommand extends Command {
       return _setCodeDirectory(config);
     if (argResults?['set-output-directory'] != null)
       return _setOutputDirectory(config);
-    if (argResults?['set-ignore'] != null)
-      return _setIgnore(config);
+    if (argResults?['set-ignore'] != null) return _setIgnore(config);
+    if (argResults?['set-language'] != null) return _setLanguage(config);
     if (argResults?['show'] == true) return _show(config);
     return _interactiveSetup();
   }
@@ -82,6 +86,13 @@ class ConfigCommand extends Command {
     stdout.write('Enter Ignore Folders (comma-separated, optional): ');
     var ignoreInput = stdin.readLineSync()?.trim() ?? '';
 
+    stdout
+        .write('Enter Language (e.g., zh-CN, en-US, ja-JP, default: en-US): ');
+    var languageInput = stdin.readLineSync()?.trim() ?? '';
+    if (languageInput.isEmpty) {
+      languageInput = 'en-US';
+    }
+
     if (baseUrl.isEmpty || model.isEmpty || apiKey.isEmpty) {
       handleError('API Key, Base URL, and Model are required');
     }
@@ -94,6 +105,7 @@ class ConfigCommand extends Command {
         codeDirectory: codeDirInput,
         outputDirectory: outputDirInput,
         ignore: ignoreInput,
+        language: languageInput,
       );
 
       await config.save();
@@ -145,6 +157,13 @@ class ConfigCommand extends Command {
     _show(config);
   }
 
+  Future<void> _setLanguage(Config config) async {
+    config.language = argResults!['set-language'].toString();
+    await config.save();
+    stdout.writeln('\nLanguage set successfully');
+    _show(config);
+  }
+
   void _show(Config config) {
     stdout.writeln('Journal CLI Configuration\n');
     var apiKey = config.apiKey;
@@ -160,6 +179,8 @@ class ConfigCommand extends Command {
     stdout.writeln('Model: ${config.model}');
     stdout.writeln('Code Directory: ${config.codeDirectory}');
     stdout.writeln('Output Directory: ${config.outputDirectory}');
-    stdout.writeln('Ignore Folders: ${config.ignore.isEmpty ? '(none)' : config.ignore}\n');
+    stdout.writeln(
+        'Ignore Folders: ${config.ignore.isEmpty ? '(none)' : config.ignore}');
+    stdout.writeln('Language: ${config.language}\n');
   }
 }

@@ -23,27 +23,48 @@ class Generator {
     var commitsText = _formatCommitsForAI(projectCommits);
 
     var prompt = '''
-You are a professional software development consultant who specializes in analyzing code commit records and providing valuable work advice.
+You are a professional software development consultant who specializes in analyzing code commit records and providing valuable work insights.
 
-Based on the following Git commit records, conduct a work summary analysis. Write like an engineer taking technical notes, using concise and objective tone, avoiding exaggeration and self-praise.
+Based on the following Git commit records, conduct a comprehensive work analysis. Write like an engineer taking technical notes, using concise and objective tone, avoiding exaggeration and self-praise.
 
 $commitsText
 
-Please return the analysis results in the following JSON format. If there is no relevant content for a certain aspect, use an empty array:
+Analyze the commits from multiple dimensions and return the results in the following JSON format:
 
 {
-  "errorsAndIssues": ["List of small mistakes or failures I made today or in the past few days"],
-  "nextImportantTasks": ["List of the most important or difficult tasks for the next working day"],
-  "beneficialWork": ["List of what things I did today are good for customers or industry"],
-  "highlights": ["List of things at work or in the industry that are strange, unclear, ridiculous, most troubling, or oddly changed since last month? Or issues I'm unable to solve today"],
-  "learnings": ["List of what did I learn for the purpose of future winning, what new tools, methods, or AI tools did I use, and what success or new experiments did I have"]
+  "errorsAndIssues": ["List of bugs fixed, mistakes corrected, or issues encountered from the commits"],
+  "nextImportantTasks": ["Identify incomplete work, planned features, or TODO items mentioned in commits"],
+  "beneficialWork": ["Summarize meaningful improvements, features added, or value delivered to users/customers"],
+  "highlights": ["Identify problems, challenges, or unusual situations. Examples: technical debt discovered, unclear requirements, difficult bugs, blockers, design trade-offs, or industry/technology changes noticed"],
+  "learnings": ["Extract knowledge gained and experiments conducted. Examples: new libraries/tools adopted (check commit messages for new dependencies or imports), technical approaches tried (new patterns, architectures), AI/automation tools used, successful experiments, or methodology improvements"]
 }
 
-Requirements:
+CRITICAL REQUIREMENTS:
+1. "learnings" field is MANDATORY - You MUST analyze:
+   - New tools/libraries/frameworks introduced (check for new imports, package additions, or tool configurations)
+   - Technical methods or patterns applied (architectural changes, refactoring patterns)
+   - AI tools or automation adopted (CI/CD, code generation, testing tools)
+   - Successful experiments or proof-of-concepts
+   - Skills developed through the work
+   Example: If commits show "feat: add OpenAI integration", extract "Used OpenAI API for AI-powered analysis"
+
+2. "highlights" field is MANDATORY - You MUST identify:
+   - Technical challenges or blockers (difficult bugs, performance issues)
+   - Unclear or changing requirements (reverted changes, multiple iterations)
+   - Unsolved problems or workarounds (temporary fixes, commented-out code)
+   - Interesting edge cases or unexpected behaviors
+   - Areas needing improvement or refactoring
+   Example: If commits show multiple attempts to fix the same issue, highlight the challenge
+
+3. "beneficialWork" should summarize the overall impact and value delivered
+
+General Guidelines:
 - Use concise, objective engineer tone
-- Avoid self-praise and exaggerated language
-- Summarize based only on actual commit information
-- Be realistic for each aspect, use empty array [] if none
+- Base analysis strictly on commit information
+- Infer context from commit patterns (e.g., multiple commits on same file = difficult problem)
+- Look for keywords: "feat", "fix", "add", "refactor", "optimize", "experiment", "try", "test"
+- Even small learnings are valuable (e.g., "learned to handle edge case X")
+- DO NOT leave "learnings" or "highlights" empty unless truly no relevant information exists
 - Use first person, but don't overuse "I"
 - Return strictly in JSON format without other explanatory text
 ''';

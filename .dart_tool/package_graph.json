@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "auto_reflect",
-      "version": "1.0.2",
+      "version": "1.0.3+9",
       "dependencies": [
         "args",
         "cli_spin",

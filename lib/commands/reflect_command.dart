@@ -144,9 +144,16 @@ class ReflectCommand extends Command {
     argParser.addOption('date', help: 'Specify date (format: YYYY-MM-DD)');
     argParser.addOption('code-dir', help: 'Code directory path');
     argParser.addOption('output-dir', help: 'Reflect output directory path');
-    argParser.addOption('ignore',
-        help:
-            'Ignore specific folders (comma-separated, e.g., "temp,node_modules")');
+    argParser.addOption(
+      'ignore',
+      help:
+          'Ignore specific folders (comma-separated, e.g., "temp,node_modules")',
+    );
+    argParser.addOption(
+      'language',
+      abbr: 'l',
+      help: 'Language for report generation (e.g., "zh-CN", "en-US", "ja-JP")',
+    );
   }
 
   @override
@@ -159,6 +166,7 @@ class ReflectCommand extends Command {
     final codeDir = argResults?['code-dir'];
     final outputDir = argResults?['output-dir'];
     final ignore = argResults?['ignore'];
+    final language = argResults?['language'];
 
     final logger = Logger(verbose: verbose);
 
@@ -221,7 +229,10 @@ class ReflectCommand extends Command {
 
       AIAnalysisResult? aiAnalysis;
       if (useAI) {
-        final config = await Config.load();
+        var config = await Config.load();
+        if (language != null) {
+          config = config.copyWith(language: language);
+        }
         if (config.apiKey.isEmpty) {
           stdout.writeln(
               '⚠️  AI configuration is invalid or missing, skipping AI analysis');
@@ -230,8 +241,10 @@ class ReflectCommand extends Command {
           try {
             _spinner.start('Generating reflect');
             // 只使用未被忽略的项目进行AI分析
-            aiAnalysis =
-                await Generator.analyzeCommits(projectCommits, config: config);
+            aiAnalysis = await Generator.analyzeCommits(
+              projectCommits,
+              config: config,
+            );
             _spinner.success();
           } catch (e) {
             _spinner.fail();

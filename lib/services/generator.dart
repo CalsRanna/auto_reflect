@@ -6,7 +6,7 @@ import '../models/ai_analysis.dart';
 
 class Generator {
   static Future<AIAnalysisResult> analyzeCommits(
-    Map<String, List<GitCommit>> projectCommits, {
+    Map<String, List<GitCommit>> commits, {
     required Config config,
   }) async {
     var headers = {
@@ -20,9 +20,12 @@ class Generator {
       headers: headers,
     );
 
-    var commitsText = _formatCommitsForAI(projectCommits);
+    var languageInstruction = _getLanguageInstruction(config.language);
+    var commitsText = _formatCommitsForAI(commits);
 
     var prompt = '''
+$languageInstruction
+
 You are a professional software development consultant who specializes in analyzing code commit records and providing valuable work insights.
 
 Based on the following Git commit records, conduct a comprehensive work analysis. Write like an engineer taking technical notes, using concise and objective tone, avoiding exaggeration and self-praise.
@@ -134,5 +137,19 @@ General Guidelines:
         rawResponse: content,
       );
     }
+  }
+
+  static String _getLanguageInstruction(String language) {
+    return switch (language) {
+      'zh-CN' => 'IMPORTANT: You must respond in Simplified Chinese (简体中文).',
+      'zh-TW' => 'IMPORTANT: You must respond in Traditional Chinese (繁體中文).',
+      'ja-JP' => 'IMPORTANT: You must respond in Japanese (日本語).',
+      'ko-KR' => 'IMPORTANT: You must respond in Korean (한국어).',
+      'es-ES' => 'IMPORTANT: You must respond in Spanish (Español).',
+      'fr-FR' => 'IMPORTANT: You must respond in French (Français).',
+      'de-DE' => 'IMPORTANT: You must respond in German (Deutsch).',
+      'en-US' => 'IMPORTANT: You must respond in English (English).', // Default
+      _ => '',
+    };
   }
 }

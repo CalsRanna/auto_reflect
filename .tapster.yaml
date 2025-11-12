@@ -1,0 +1,13 @@
+# Tapster Configuration File
+# This file defines how your package should be built and published
+
+name: journal
+version: 1.0.2
+description: Automatic Git work log generator with AI analysis.
+homepage: https://github.com/CalsRanna/auto_reflect
+repository: https://github.com/CalsRanna/auto_reflect.git
+license: MIT
+
+tap: inspire
+asset: build/journal
+checksum: e09c6b281b267aad3c7a390c9cbd3f49df56360f1b3906dfd3ffebce4c33329a

@@ -202,63 +202,6 @@ class ReflectCommand extends Command {
           codeDirectory, today,
           config: config, ignore: ignore);
 
-      // 如果启用了 override，使用 AI 重写 commit 消息
-      if (override && allProjectCommits.isNotEmpty) {
-        var overrideConfig = config;
-        if (language != null) {
-          overrideConfig = config.copyWith(language: language);
-        }
-
-        if (overrideConfig.apiKey.isEmpty) {
-          stdout.writeln(
-              '⚠️  AI configuration is invalid or missing, skipping commit message rewrite');
-          stdout.writeln('Please run: journal config');
-        } else {
-          _spinner.start('Rewriting commit messages with AI');
-          try {
-            for (var projectName in allProjectCommits.keys) {
-              final commits = allProjectCommits[projectName]!;
-              final rewrittenCommits = <GitCommit>[];
-
-              for (var commit in commits) {
-                // 获取 commit 的 diff
-                final diff = await gitService.getCommitDiff(
-                    commit.hash, commit.projectPath);
-
-                if (diff.isEmpty) {
-                  // 如果无法获取 diff，保留原消息
-                  rewrittenCommits.add(commit);
-                  continue;
-                }
-
-                // 使用 AI 重写 commit 消息
-                final newMessage = await Generator.rewriteCommitMessage(
-                  diff,
-                  config: overrideConfig,
-                );
-
-                // 创建新的 GitCommit 对象
-                rewrittenCommits.add(GitCommit(
-                  hash: commit.hash,
-                  author: commit.author,
-                  email: commit.email,
-                  message: newMessage.isNotEmpty ? newMessage : commit.message,
-                  date: commit.date,
-                  projectPath: commit.projectPath,
-                ));
-              }
-
-              // 替换原有的 commits
-              allProjectCommits[projectName] = rewrittenCommits;
-            }
-            _spinner.success();
-          } catch (e) {
-            _spinner.fail();
-            stdout.writeln('⚠️  Failed to rewrite commit messages: $e');
-          }
-        }
-      }
-
       // 合并全局配置和命令行参数的 ignore 设置
       final allIgnores = _mergeIgnoreLists(config.ignore, ignore);
 
@@ -286,6 +229,89 @@ class ReflectCommand extends Command {
       var stat =
           await _getProjectStats(projectCommits, ignoredProjectsWithCommits);
       stdout.writeln(stat);
+
+      // 如果启用了 override，使用 AI 重写包含 URL 的 commit 消息
+      if (override && projectCommits.isNotEmpty) {
+        var overrideConfig = config;
+        if (language != null) {
+          overrideConfig = config.copyWith(language: language);
+        }
+
+        if (overrideConfig.apiKey.isEmpty) {
+          stdout.writeln(
+              '⚠️  AI configuration is invalid or missing, skipping commit message rewrite');
+          stdout.writeln('Please run: journal config');
+        } else {
+          // 先统计需要重写的 commit 数量（只统计包含 URL 的）
+          final urlPattern = RegExp(r'https://yt\.utui\.cc/issue/');
+          var needRewriteCount = 0;
+          for (var commits in projectCommits.values) {
+            needRewriteCount +=
+                commits.where((c) => urlPattern.hasMatch(c.message)).length;
+          }
+
+          if (needRewriteCount > 0) {
+            var processedCount = 0;
+            _spinner.start(
+                'Rewriting commit messages with AI (1/$needRewriteCount)');
+
+            try {
+              for (var projectName in projectCommits.keys) {
+                final commits = projectCommits[projectName]!;
+                final rewrittenCommits = <GitCommit>[];
+
+                for (var commit in commits) {
+                  // 检查是否包含需要重写的 URL
+                  if (!urlPattern.hasMatch(commit.message)) {
+                    // 不包含 URL，保留原消息
+                    rewrittenCommits.add(commit);
+                    continue;
+                  }
+
+                  // 开始处理，更新进度（从 1 开始）
+                  processedCount++;
+                  _spinner.text =
+                      'Rewriting commit messages with AI ($processedCount/$needRewriteCount)';
+
+                  // 获取 commit 的 diff
+                  final diff = await gitService.getCommitDiff(
+                      commit.hash, commit.projectPath);
+
+                  if (diff.isEmpty) {
+                    // 如果无法获取 diff，保留原消息
+                    rewrittenCommits.add(commit);
+                    continue;
+                  }
+
+                  // 使用 AI 重写 commit 消息
+                  final newMessage = await Generator.rewriteCommitMessage(
+                    diff,
+                    config: overrideConfig,
+                  );
+
+                  // 创建新的 GitCommit 对象
+                  rewrittenCommits.add(GitCommit(
+                    hash: commit.hash,
+                    author: commit.author,
+                    email: commit.email,
+                    message:
+                        newMessage.isNotEmpty ? newMessage : commit.message,
+                    date: commit.date,
+                    projectPath: commit.projectPath,
+                  ));
+                }
+
+                // 替换原有的 commits
+                projectCommits[projectName] = rewrittenCommits;
+              }
+              _spinner.success();
+            } catch (e) {
+              _spinner.fail();
+              stdout.writeln('⚠️  Failed to rewrite commit messages: $e');
+            }
+          }
+        }
+      }
 
       AIAnalysisResult? aiAnalysis;
       if (useAI) {

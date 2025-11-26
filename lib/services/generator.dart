@@ -93,6 +93,69 @@ General Guidelines:
     }
   }
 
+  /// 使用 AI 重写 commit 消息
+  ///
+  /// 根据 commit 的 diff 内容生成更有意义的 commit 消息
+  static Future<String> rewriteCommitMessage(
+    String diff, {
+    required Config config,
+  }) async {
+    var headers = {
+      'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
+      'X-Title': 'Auto Reflect',
+    };
+
+    var client = OpenAIClient(
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
+      headers: headers,
+    );
+
+    var languageInstruction = _getLanguageInstruction(config.language);
+
+    var prompt = '''
+$languageInstruction
+
+You are an expert at writing clear, concise git commit messages following the Conventional Commits specification.
+
+Based on the following git diff, generate a single-line commit message that accurately describes what changed and why.
+
+Follow these rules:
+1. Use the format: <type>(<scope>): <subject>
+2. Types: feat, fix, refactor, style, test, docs, chore, perf
+3. Keep the subject line under 72 characters
+4. Use imperative mood ("add" not "added" or "adds")
+5. Don't capitalize the first letter of the subject
+6. No period at the end
+7. Be specific and descriptive about what actually changed
+
+Git Diff:
+$diff
+
+Return ONLY the commit message, nothing else.
+''';
+
+    var systemMessage = ChatCompletionMessage.system(content: prompt);
+    var userMessage = ChatCompletionMessage.user(
+      content: ChatCompletionUserMessageContent.string(diff),
+    );
+
+    var request = CreateChatCompletionRequest(
+      model: ChatCompletionModel.modelId(config.model),
+      messages: [systemMessage, userMessage],
+      temperature: 0.5,
+      maxTokens: 100,
+    );
+
+    try {
+      var response = await client.createChatCompletion(request: request);
+      var content = response.choices.first.message.content ?? '';
+      return content.trim();
+    } finally {
+      client.endSession();
+    }
+  }
+
   static String _formatCommitsForAI(
       Map<String, List<GitCommit>> projectCommits) {
     final buffer = StringBuffer();

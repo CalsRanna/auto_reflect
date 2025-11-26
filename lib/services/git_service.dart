@@ -115,4 +115,20 @@ class GitService {
       return [];
     }
   }
+
+  /// 获取指定 commit 的 diff
+  Future<String> getCommitDiff(String commitHash, String projectPath) async {
+    try {
+      var shell = Shell(verbose: false, workingDirectory: projectPath);
+      var result = await shell.run('git show $commitHash --stat --patch');
+
+      if (result.first.exitCode != 0) {
+        return '';
+      }
+
+      return result.first.stdout.toString();
+    } catch (e) {
+      return '';
+    }
+  }
 }

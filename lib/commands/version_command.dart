@@ -14,6 +14,6 @@ class VersionCommand extends Command {
 
   @override
   Future<void> run() async {
-    stdout.writeln('Journal 1.0.4');
+    stdout.writeln('Journal 1.0.5');
   }
 }

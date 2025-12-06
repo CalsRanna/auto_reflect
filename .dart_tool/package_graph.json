@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "auto_reflect",
-      "version": "1.0.5+15",
+      "version": "1.0.6+17",
       "dependencies": [
         "args",
         "cli_spin",
@@ -617,13 +617,13 @@
       ]
     },
     {
-      "name": "vector_math",
-      "version": "2.2.0",
+      "name": "sky_engine",
+      "version": "0.0.0",
       "dependencies": []
     },
     {
-      "name": "sky_engine",
-      "version": "0.0.0",
+      "name": "vector_math",
+      "version": "2.2.0",
       "dependencies": []
     },
     {

@@ -129,6 +129,27 @@ List<String> _mergeIgnoreLists(String configIgnore, String? commandLineIgnore) {
   return ignoreSet.toList();
 }
 
+// 合并authors列表的工具方法
+List<String>? _mergeAuthorLists(
+    String configAuthors, List<String>? commandLineAuthors) {
+  // 如果命令行指定了 authors，优先使用命令行的（不合并）
+  if (commandLineAuthors != null && commandLineAuthors.isNotEmpty) {
+    return commandLineAuthors;
+  }
+
+  // 否则，使用配置文件中的 authors
+  if (configAuthors.isNotEmpty) {
+    return configAuthors
+        .split(',')
+        .map((a) => a.trim())
+        .where((a) => a.isNotEmpty)
+        .toList();
+  }
+
+  // 如果都没有，返回 null（GitService 将使用当前用户）
+  return null;
+}
+
 class ReflectCommand extends Command {
   final _spinner = CliSpin(spinner: CliSpinners.dots5);
 
@@ -156,6 +177,11 @@ class ReflectCommand extends Command {
       abbr: 'l',
       help: 'Language for report generation (e.g., "zh-CN", "en-US", "ja-JP")',
     );
+    argParser.addMultiOption(
+      'author',
+      abbr: 'a',
+      help: 'Filter commits by author name(s). Can be specified multiple times. (overrides default current user)',
+    );
   }
 
   @override
@@ -170,6 +196,7 @@ class ReflectCommand extends Command {
     final outputDir = argResults?['output-dir'];
     final ignore = argResults?['ignore'];
     final language = argResults?['language'];
+    final authors = argResults?['author'] as List<String>?;
 
     final logger = Logger(verbose: verbose);
 
@@ -198,9 +225,12 @@ class ReflectCommand extends Command {
 
       await FileUtils.ensureDirectoryExists(reflectFolderPath);
 
+      // 合并全局配置和命令行参数的 authors 设置
+      final mergedAuthors = _mergeAuthorLists(config.authors, authors);
+
       final allProjectCommits = await gitService.scanGitProjects(
           codeDirectory, today,
-          config: config, ignore: ignore);
+          config: config, ignore: ignore, authors: mergedAuthors);
 
       // 合并全局配置和命令行参数的 ignore 设置
       final allIgnores = _mergeIgnoreLists(config.ignore, ignore);

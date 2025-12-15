@@ -26,6 +26,10 @@ class ConfigCommand extends Command {
         help:
             'Set default language for reports (e.g., "zh-CN", "en-US", "ja-JP")',
       )
+      ..addOption(
+        'set-authors',
+        help: 'Set default authors (comma-separated, e.g., "John,Jane")',
+      )
       ..addFlag('show', help: 'Show current configuration', negatable: false);
   }
 
@@ -47,6 +51,7 @@ class ConfigCommand extends Command {
       return _setOutputDirectory(config);
     if (argResults?['set-ignore'] != null) return _setIgnore(config);
     if (argResults?['set-language'] != null) return _setLanguage(config);
+    if (argResults?['set-authors'] != null) return _setAuthors(config);
     if (argResults?['show'] == true) return _show(config);
     return _interactiveSetup();
   }
@@ -93,6 +98,9 @@ class ConfigCommand extends Command {
       languageInput = 'en-US';
     }
 
+    stdout.write('Enter Default Authors (comma-separated, optional): ');
+    var authorsInput = stdin.readLineSync()?.trim() ?? '';
+
     if (baseUrl.isEmpty || model.isEmpty || apiKey.isEmpty) {
       handleError('API Key, Base URL, and Model are required');
     }
@@ -106,6 +114,7 @@ class ConfigCommand extends Command {
         outputDirectory: outputDirInput,
         ignore: ignoreInput,
         language: languageInput,
+        authors: authorsInput,
       );
 
       await config.save();
@@ -164,6 +173,13 @@ class ConfigCommand extends Command {
     _show(config);
   }
 
+  Future<void> _setAuthors(Config config) async {
+    config.authors = argResults!['set-authors'].toString();
+    await config.save();
+    stdout.writeln('\nDefault authors set successfully');
+    _show(config);
+  }
+
   void _show(Config config) {
     stdout.writeln('Journal CLI Configuration\n');
     var apiKey = config.apiKey;
@@ -181,6 +197,8 @@ class ConfigCommand extends Command {
     stdout.writeln('Output Directory: ${config.outputDirectory}');
     stdout.writeln(
         'Ignore Folders: ${config.ignore.isEmpty ? '(none)' : config.ignore}');
-    stdout.writeln('Language: ${config.language}\n');
+    stdout.writeln('Language: ${config.language}');
+    stdout.writeln(
+        'Default Authors: ${config.authors.isEmpty ? '(none)' : config.authors}\n');
   }
 }

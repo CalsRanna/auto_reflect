@@ -24,6 +24,7 @@ class GitService {
     String date, {
     required Config config,
     String? ignore,
+    List<String>? authors,
   }) async {
     final commits = <String, List<GitCommit>>{};
 
@@ -34,7 +35,7 @@ class GitService {
 
         final gitDir = Directory(path.join(entity.path, '.git'));
         if (await gitDir.exists()) {
-          final projectCommits = await _getCommitsForDate(entity.path, date);
+          final projectCommits = await _getCommitsForDate(entity.path, date, authors: authors);
           if (projectCommits.isNotEmpty) {
             commits[projectName] = projectCommits;
           }
@@ -69,7 +70,7 @@ class GitService {
   }
 
   Future<List<GitCommit>> _getCommitsForDate(
-      String projectPath, String date) async {
+      String projectPath, String date, {List<String>? authors}) async {
     try {
       var gitCommand = [
         'log',
@@ -79,8 +80,24 @@ class GitService {
         '--no-merges'
       ];
 
-      if (_currentUserName != null) {
-        gitCommand.insert(1, '--author=$_currentUserName');
+      // 确定作者过滤器
+      String? authorFilter;
+      if (authors != null && authors.isNotEmpty) {
+        // 如果指定了多个作者，使用正则表达式匹配：(author1|author2|author3)
+        if (authors.length == 1) {
+          authorFilter = authors.first;
+        } else {
+          // 转义特殊字符并构建正则表达式
+          final escapedAuthors = authors.map((a) => RegExp.escape(a)).join('|');
+          authorFilter = '($escapedAuthors)';
+        }
+      } else if (_currentUserName != null) {
+        // 如果没有指定作者，使用当前用户名
+        authorFilter = _currentUserName;
+      }
+
+      if (authorFilter != null) {
+        gitCommand.insert(1, '--author=$authorFilter');
       }
 
       var shell = Shell(verbose: false, workingDirectory: projectPath);

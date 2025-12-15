@@ -12,6 +12,7 @@ class Config {
   late String outputDirectory;
   late String ignore;
   late String language;
+  late String authors;
 
   Config({
     this.apiKey = '',
@@ -21,6 +22,7 @@ class Config {
     this.outputDirectory = '',
     this.ignore = '',
     this.language = 'en-US',
+    this.authors = '',
   });
 
   Config copyWith({
@@ -31,6 +33,7 @@ class Config {
     String? outputDirectory,
     String? ignore,
     String? language,
+    String? authors,
   }) {
     return Config(
       apiKey: apiKey ?? this.apiKey,
@@ -40,6 +43,7 @@ class Config {
       outputDirectory: outputDirectory ?? this.outputDirectory,
       ignore: ignore ?? this.ignore,
       language: language ?? this.language,
+      authors: authors ?? this.authors,
     );
   }
 
@@ -67,6 +71,7 @@ class Config {
       'output_dir: $outputDirectory',
       'ignore: $ignore',
       'language: $language',
+      'authors: $authors',
     ];
     await file.writeAsString(parts.join('\n'));
   }
@@ -98,6 +103,7 @@ class Config {
       outputDirectory: yaml['output_dir']?.toString() ?? getDefaultOutputDir(),
       ignore: yaml['ignore']?.toString() ?? '',
       language: yaml['language']?.toString() ?? 'en-US',
+      authors: yaml['authors']?.toString() ?? '',
     );
   }
 
@@ -110,6 +116,7 @@ class Config {
       outputDirectory: getDefaultOutputDir(),
       ignore: '',
       language: 'en-US',
+      authors: '',
     );
   }
 

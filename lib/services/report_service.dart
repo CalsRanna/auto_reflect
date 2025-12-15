@@ -77,7 +77,7 @@ class ReportService {
 
       if (aiAnalysis.beneficialWork.isNotEmpty) {
         buffer.writeln(
-            '## What things I did today are good for customers or industry?');
+            '## What new development techniques or new app store policies did I learn about today?');
         buffer.writeln('');
         for (final beneficial in aiAnalysis.beneficialWork) {
           buffer.writeln('- $beneficial');

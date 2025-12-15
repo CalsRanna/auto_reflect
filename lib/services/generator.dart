@@ -35,11 +35,11 @@ $commitsText
 Analyze the commits from multiple dimensions and return the results in the following JSON format:
 
 {
-  "errorsAndIssues": ["List of bugs fixed, mistakes corrected, or issues encountered from the commits"],
-  "nextImportantTasks": ["Identify incomplete work, planned features, or TODO items mentioned in commits"],
-  "beneficialWork": ["Summarize meaningful improvements, features added, or value delivered to users/customers"],
-  "highlights": ["Identify problems, challenges, or unusual situations. Examples: technical debt discovered, unclear requirements, difficult bugs, blockers, design trade-offs, or industry/technology changes noticed"],
-  "learnings": ["Extract knowledge gained and experiments conducted. Examples: new libraries/tools adopted (check commit messages for new dependencies or imports), technical approaches tried (new patterns, architectures), AI/automation tools used, successful experiments, or methodology improvements"]
+  "errorsAndIssues": ["Small mistakes or failures from the commits. Examples: bugs fixed, incorrect implementations corrected, issues encountered during development"],
+  "nextImportantTasks": ["Most important or difficult tasks for next working day. Include incomplete work, planned features, or TODO items mentioned in commits"],
+  "beneficialWork": ["What new development techniques or app store policies learned today, and what's good for customers. Focus on: new technical methods/tools discovered, app store policy updates learned, technical details improved, product experiences enhanced, value delivered to users"],
+  "highlights": ["Strange, unclear, ridiculous, or most troubling things at work. Examples: technical challenges, unclear requirements, difficult bugs, blockers, design trade-offs, unexpected behaviors, or issues unable to solve"],
+  "learnings": ["What learned for future winning, what new tools/methods/AI tools used, what success or experiments had. Examples: new libraries/frameworks adopted, technical approaches tried, AI/automation tools used, successful experiments, development skills improved"]
 }
 
 CRITICAL REQUIREMENTS:
@@ -59,7 +59,13 @@ CRITICAL REQUIREMENTS:
    - Areas needing improvement or refactoring
    Example: If commits show multiple attempts to fix the same issue, highlight the challenge
 
-3. "beneficialWork" should summarize the overall impact and value delivered
+3. "beneficialWork" should combine technical learning with customer value:
+   - New development techniques or patterns discovered
+   - App store policies or platform requirements learned
+   - Technical details and product experiences improved
+   - Work done beyond normal responsibilities
+   - Value and benefits delivered to customers
+   Example: "Learned new iOS 17 privacy requirements and updated app accordingly to improve user trust"
 
 General Guidelines:
 - Use concise, objective engineer tone

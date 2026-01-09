@@ -37,7 +37,7 @@ Analyze the commits from multiple dimensions and return the results in the follo
 {
   "errorsAndIssues": ["Small mistakes or failures from the commits. Examples: bugs fixed, incorrect implementations corrected, issues encountered during development"],
   "nextImportantTasks": ["Most important or difficult tasks for next working day. Include incomplete work, planned features, or TODO items mentioned in commits"],
-  "beneficialWork": ["What new development techniques or app store policies learned today, and what's good for customers. Focus on: new technical methods/tools discovered, app store policy updates learned, technical details improved, product experiences enhanced, value delivered to users"],
+  "beneficialWork": ["What new development techniques or new app store policies learned today. Focus on: new technical methods/tools discovered, app store policy updates learned, technical details improved"],
   "highlights": ["Strange, unclear, ridiculous, or most troubling things at work. Examples: technical challenges, unclear requirements, difficult bugs, blockers, design trade-offs, unexpected behaviors, or issues unable to solve"],
   "learnings": ["What learned for future winning, what new tools/methods/AI tools used, what success or experiments had. Examples: new libraries/frameworks adopted, technical approaches tried, AI/automation tools used, successful experiments, development skills improved"]
 }
@@ -59,13 +59,11 @@ CRITICAL REQUIREMENTS:
    - Areas needing improvement or refactoring
    Example: If commits show multiple attempts to fix the same issue, highlight the challenge
 
-3. "beneficialWork" should combine technical learning with customer value:
+3. "beneficialWork" should focus on technical learning:
    - New development techniques or patterns discovered
    - App store policies or platform requirements learned
-   - Technical details and product experiences improved
-   - Work done beyond normal responsibilities
-   - Value and benefits delivered to customers
-   Example: "Learned new iOS 17 privacy requirements and updated app accordingly to improve user trust"
+   - Technical details improved
+   Example: "Learned new iOS 17 privacy requirements" or "Discovered a new Flutter state management pattern"
 
 General Guidelines:
 - Use concise, objective engineer tone

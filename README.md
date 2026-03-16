@@ -209,6 +209,7 @@ journal config --set-ignore "temp,node_modules,.git"
 **Examples**:
 ```bash
 journal doctor
+journal doctor -v
 ```
 
 ## AI Analysis

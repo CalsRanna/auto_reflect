@@ -107,15 +107,11 @@ Future<String> _getProjectStats(Map<String, List<GitCommit>> projectCommits,
 }
 
 // 合并ignore列表的工具方法
-List<String> _mergeIgnoreLists(String configIgnore, String? commandLineIgnore) {
+List<String> _mergeIgnoreLists(
+    List<String> configIgnore, String? commandLineIgnore) {
   final ignoreSet = <String>{};
 
-  // 添加全局配置中的 ignore
-  if (configIgnore.isNotEmpty) {
-    final configIgnores =
-        configIgnore.split(',').map((f) => f.trim()).where((f) => f.isNotEmpty);
-    ignoreSet.addAll(configIgnores);
-  }
+  ignoreSet.addAll(configIgnore);
 
   // 添加命令行参数中的 ignore
   if (commandLineIgnore != null && commandLineIgnore.isNotEmpty) {
@@ -180,7 +176,8 @@ class ReflectCommand extends Command {
     argParser.addMultiOption(
       'author',
       abbr: 'a',
-      help: 'Filter commits by author name(s). Can be specified multiple times. (overrides default current user)',
+      help:
+          'Filter commits by author name(s). Can be specified multiple times. (overrides default current user)',
     );
   }
 

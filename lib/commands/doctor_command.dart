@@ -147,15 +147,10 @@ class DoctorCommand extends Command {
   }
 
   Map<String, dynamic> _checkIgnore(Config config) {
-    final items = config.ignore
-        .split(',')
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
     return <String, dynamic>{
       'valid': true,
       'issues': <String>[],
-      'items': items,
+      'items': List<String>.from(config.ignore),
     };
   }
 

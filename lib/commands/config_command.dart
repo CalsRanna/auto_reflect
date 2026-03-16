@@ -20,7 +20,10 @@ class ConfigCommand extends Command {
       ..addOption('set-model', help: 'Set model')
       ..addOption('set-code-directory', help: 'Set code directory path')
       ..addOption('set-output-directory', help: 'Set output directory path')
-      ..addOption('set-ignore', help: 'Set ignore folders (comma-separated)')
+      ..addOption(
+        'set-ignore',
+        help: 'Set ignore folders (comma-separated, saved as YAML list)',
+      )
       ..addOption(
         'set-language',
         help:
@@ -112,7 +115,7 @@ class ConfigCommand extends Command {
         apiKey: apiKey,
         codeDirectory: codeDirInput,
         outputDirectory: outputDirInput,
-        ignore: ignoreInput,
+        ignore: _parseCsvList(ignoreInput),
         language: languageInput,
         authors: authorsInput,
       );
@@ -160,7 +163,7 @@ class ConfigCommand extends Command {
   }
 
   Future<void> _setIgnore(Config config) async {
-    config.ignore = argResults!['set-ignore'].toString();
+    config.ignore = _parseCsvList(argResults!['set-ignore'].toString());
     await config.save();
     stdout.writeln('\nIgnore folders set successfully');
     _show(config);
@@ -195,10 +198,24 @@ class ConfigCommand extends Command {
     stdout.writeln('Model: ${config.model}');
     stdout.writeln('Code Directory: ${config.codeDirectory}');
     stdout.writeln('Output Directory: ${config.outputDirectory}');
-    stdout.writeln(
-        'Ignore Folders: ${config.ignore.isEmpty ? '(none)' : config.ignore}');
+    if (config.ignore.isEmpty) {
+      stdout.writeln('Ignore Folders: (none)');
+    } else {
+      stdout.writeln('Ignore Folders:');
+      for (final item in config.ignore) {
+        stdout.writeln('  - $item');
+      }
+    }
     stdout.writeln('Language: ${config.language}');
     stdout.writeln(
         'Default Authors: ${config.authors.isEmpty ? '(none)' : config.authors}\n');
+  }
+
+  List<String> _parseCsvList(String input) {
+    return input
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 }

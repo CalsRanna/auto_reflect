@@ -130,7 +130,10 @@ base_url: https://api.openai.com/v1
 model: gpt-4o
 code_dir: /Users/username/Code
 output_dir: /Users/username/Reflect
-ignore: temp,node_modules,.git
+ignore:
+  - temp
+  - node_modules
+  - .git
 ```
 
 ### Advanced Usage

@@ -10,7 +10,7 @@ class Config {
   late String model;
   late String codeDirectory;
   late String outputDirectory;
-  late String ignore;
+  late List<String> ignore;
   late String language;
   late String authors;
 
@@ -20,7 +20,7 @@ class Config {
     this.model = 'gpt-4o',
     this.codeDirectory = '',
     this.outputDirectory = '',
-    this.ignore = '',
+    this.ignore = const [],
     this.language = 'en-US',
     this.authors = '',
   });
@@ -31,7 +31,7 @@ class Config {
     String? model,
     String? codeDirectory,
     String? outputDirectory,
-    String? ignore,
+    List<String>? ignore,
     String? language,
     String? authors,
   }) {
@@ -41,7 +41,7 @@ class Config {
       model: model ?? this.model,
       codeDirectory: codeDirectory ?? this.codeDirectory,
       outputDirectory: outputDirectory ?? this.outputDirectory,
-      ignore: ignore ?? this.ignore,
+      ignore: ignore ?? List<String>.from(this.ignore),
       language: language ?? this.language,
       authors: authors ?? this.authors,
     );
@@ -62,17 +62,26 @@ class Config {
     var directory = homeDirectory ?? profileDirectory;
     var configPath = directory ?? currentDirectory.path;
     var file = File('$configPath/$name');
-    var parts = [
+    var parts = <String>[
       '# Journal CLI Configuration',
       'api_key: $apiKey',
       'base_url: $baseUrl',
       'model: $model',
       'code_dir: $codeDirectory',
       'output_dir: $outputDirectory',
-      'ignore: $ignore',
+    ];
+    if (ignore.isEmpty) {
+      parts.add('ignore: []');
+    } else {
+      parts.add('ignore:');
+      for (final item in ignore) {
+        parts.add("  - '${_escapeYaml(item)}'");
+      }
+    }
+    parts.addAll([
       'language: $language',
       'authors: $authors',
-    ];
+    ]);
     await file.writeAsString(parts.join('\n'));
   }
 
@@ -95,13 +104,14 @@ class Config {
     if (file == null) return _createDefaultConfig();
     var content = await file.readAsString();
     var yaml = loadYaml(content);
+    var ignore = _parseIgnore(yaml['ignore']);
     return Config(
       apiKey: yaml['api_key']?.toString() ?? '',
       baseUrl: yaml['base_url']?.toString() ?? 'https://api.openai.com/v1',
       model: yaml['model']?.toString() ?? 'gpt-4o',
       codeDirectory: yaml['code_dir']?.toString() ?? getDefaultCodeDir(),
       outputDirectory: yaml['output_dir']?.toString() ?? getDefaultOutputDir(),
-      ignore: yaml['ignore']?.toString() ?? '',
+      ignore: ignore,
       language: yaml['language']?.toString() ?? 'en-US',
       authors: yaml['authors']?.toString() ?? '',
     );
@@ -114,10 +124,35 @@ class Config {
       model: 'gpt-4o',
       codeDirectory: getDefaultCodeDir(),
       outputDirectory: getDefaultOutputDir(),
-      ignore: '',
+      ignore: const [],
       language: 'en-US',
       authors: '',
     );
+  }
+
+  static List<String> _parseIgnore(dynamic value) {
+    if (value == null) return const [];
+    if (value is! YamlList) {
+      throw FormatException(
+        'Invalid ".auto_reflect.yaml": "ignore" must be a YAML list.',
+      );
+    }
+
+    return value
+        .map((item) {
+          if (item is! String) {
+            throw FormatException(
+              'Invalid ".auto_reflect.yaml": every "ignore" item must be a string.',
+            );
+          }
+          return item.trim();
+        })
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  static String _escapeYaml(String value) {
+    return value.replaceAll("'", "''");
   }
 
   static Future<File?> _findConfigFile() async {

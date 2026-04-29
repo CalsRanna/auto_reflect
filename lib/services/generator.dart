@@ -35,13 +35,22 @@ $commitsText
 Analyze the commits from multiple dimensions and return the results in the following JSON format:
 
 {
-  "errorsAndIssues": ["Small mistakes or failures from the commits. Examples: bugs fixed, incorrect implementations corrected, issues encountered during development"],
+  "errorsAndIssues": ["Small mistakes or failures I MADE (not what I fixed). Look at what the commit reveals about my oversight, sloppiness, or poor judgment. Examples: forgot edge case handling, left dead code after refactoring, broke a feature with a shared module change, introduced a regression bug, neglected to write tests, didn't check API compatibility, hardcoded a value that should be configurable"],
   "nextImportantTasks": ["Most important or difficult tasks for next working day. Include incomplete work, planned features, or TODO items mentioned in commits"],
   "highlights": ["Strange, unclear, ridiculous, or most troubling things at work. Examples: technical challenges, unclear requirements, difficult bugs, blockers, design trade-offs, unexpected behaviors, or issues unable to solve"]
 }
 
 CRITICAL REQUIREMENTS:
-1. "highlights" field is MANDATORY - You MUST identify:
+1. "errorsAndIssues" MUST reflect MY OWN mistakes or oversights, NOT just describe what was fixed:
+   - Read the commit as a confession — what did I do wrong that this commit reveals?
+   - If a commit "fixes" something → I broke it earlier. What mistake caused the bug?
+   - If a commit "removes" unused code → I left dead code lingering. Where did I forget to clean up?
+   - If a commit "refactors" something → What was sloppy or wrong with the previous version?
+   - NEVER say "Fixed X" or "Removed Y" as the mistake itself — identify the ROOT mistake
+   - Example: commit "fix: null pointer in payment" → "I forgot to check for null before accessing payment object"
+   - Example: commit "refactor: remove unused entity class" → "I left unused entity code after previous module refactoring"
+
+2. "highlights" field is MANDATORY - You MUST identify:
    - Technical challenges or blockers (difficult bugs, performance issues)
    - Unclear or changing requirements (reverted changes, multiple iterations)
    - Unsolved problems or workarounds (temporary fixes, commented-out code)

@@ -159,7 +159,8 @@ class ReflectCommand extends Command {
     argParser.addFlag('verbose', abbr: 'v', help: 'Verbose output');
     argParser.addFlag('no-ai', help: 'Disable AI analysis');
     argParser.addFlag('override',
-        help: 'Use AI to rewrite commit messages based on diff');
+        help:
+            'Disregard commit messages and generate work summaries from actual commit diffs using AI');
     argParser.addOption('date', help: 'Specify date (format: YYYY-MM-DD)');
     argParser.addOption('code-dir', help: 'Code directory path');
     argParser.addOption('output-dir', help: 'Reflect output directory path');
@@ -257,7 +258,7 @@ class ReflectCommand extends Command {
           await _getProjectStats(projectCommits, ignoredProjectsWithCommits);
       stdout.writeln(stat);
 
-      // 如果启用了 override，使用 AI 重写包含 URL 的 commit 消息
+      // 如果启用了 override，不再参考 commit message，改为每次读取 diff 生成工作内容
       if (override && projectCommits.isNotEmpty) {
         var overrideConfig = config;
         if (language != null) {
@@ -266,21 +267,19 @@ class ReflectCommand extends Command {
 
         if (overrideConfig.apiKey.isEmpty) {
           stdout.writeln(
-              '⚠️  AI configuration is invalid or missing, skipping commit message rewrite');
+              '⚠️  AI configuration is invalid or missing, skipping work summary generation');
           stdout.writeln('Please run: journal config');
         } else {
-          // 先统计需要重写的 commit 数量（只统计包含 URL 的）
-          final urlPattern = RegExp(r'https://yt\.utui\.cc/issue/');
-          var needRewriteCount = 0;
+          // 统计所有需要处理的 commit 数量
+          var totalCommits = 0;
           for (var commits in projectCommits.values) {
-            needRewriteCount +=
-                commits.where((c) => urlPattern.hasMatch(c.message)).length;
+            totalCommits += commits.length;
           }
 
-          if (needRewriteCount > 0) {
+          if (totalCommits > 0) {
             var processedCount = 0;
             _spinner.start(
-                'Rewriting commit messages with AI (1/$needRewriteCount)');
+                'Generating work summaries from commit diffs (1/$totalCommits)');
 
             try {
               for (var projectName in projectCommits.keys) {
@@ -288,19 +287,11 @@ class ReflectCommand extends Command {
                 final rewrittenCommits = <GitCommit>[];
 
                 for (var commit in commits) {
-                  // 检查是否包含需要重写的 URL
-                  if (!urlPattern.hasMatch(commit.message)) {
-                    // 不包含 URL，保留原消息
-                    rewrittenCommits.add(commit);
-                    continue;
-                  }
-
-                  // 开始处理，更新进度（从 1 开始）
                   processedCount++;
                   _spinner.text =
-                      'Rewriting commit messages with AI ($processedCount/$needRewriteCount)';
+                      'Generating work summaries from commit diffs ($processedCount/$totalCommits)';
 
-                  // 获取 commit 的 diff
+                  // 每次提交单独读取 diff
                   final diff = await gitService.getCommitDiff(
                       commit.hash, commit.projectPath);
 
@@ -310,13 +301,13 @@ class ReflectCommand extends Command {
                     continue;
                   }
 
-                  // 使用 AI 重写 commit 消息
+                  // 使用 AI 基于 diff 生成工作内容摘要
                   final newMessage = await Generator.rewriteCommitMessage(
                     diff,
                     config: overrideConfig,
                   );
 
-                  // 创建新的 GitCommit 对象
+                  // 创建新的 GitCommit 对象，用 AI 生成的内容替换原 commit message
                   rewrittenCommits.add(GitCommit(
                     hash: commit.hash,
                     author: commit.author,
@@ -334,7 +325,7 @@ class ReflectCommand extends Command {
               _spinner.success();
             } catch (e) {
               _spinner.fail();
-              stdout.writeln('⚠️  Failed to rewrite commit messages: $e');
+              stdout.writeln('⚠️  Failed to generate work summaries: $e');
             }
           }
         }

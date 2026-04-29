@@ -97,9 +97,9 @@ General Guidelines:
     }
   }
 
-  /// 使用 AI 重写 commit 消息
+  /// 使用 AI 根据 diff 生成工作内容摘要
   ///
-  /// 根据 commit 的 diff 内容生成更有意义的 commit 消息
+  /// 读取每次提交的具体内容（diff），生成描述性工作内容，不再参考 commit message
   static Future<String> rewriteCommitMessage(
     String diff, {
     required Config config,
@@ -120,23 +120,21 @@ General Guidelines:
     var prompt = '''
 $languageInstruction
 
-You are an expert at writing clear, concise git commit messages following the Conventional Commits specification.
+You are an expert at analyzing code changes and summarizing the actual work performed.
 
-Based on the following git diff, generate a single-line commit message that accurately describes what changed and why.
+Based on the following git diff, generate a concise summary of what work was actually done in this commit. Read the diff carefully and describe the actual changes and their purpose.
 
-Follow these rules:
-1. Use the format: <type>(<scope>): <subject>
-2. Types: feat, fix, refactor, style, test, docs, chore, perf
-3. Keep the subject line under 72 characters
-4. Use imperative mood ("add" not "added" or "adds")
-5. Don't capitalize the first letter of the subject
-6. No period at the end
-7. Be specific and descriptive about what actually changed
+Rules:
+1. Write 1-2 sentences describing the actual work completed
+2. Be specific about what was implemented, fixed, or changed
+3. Use clear, descriptive language - avoid generic descriptions like "updated code"
+4. Focus on the substance and purpose of the changes
+5. Write in a professional but natural style, suitable for daily work reports
 
 Git Diff:
 $diff
 
-Return ONLY the commit message, nothing else.
+Return ONLY the work summary, nothing else.
 ''';
 
     var systemMessage = ChatCompletionMessage.system(content: prompt);
@@ -148,7 +146,7 @@ Return ONLY the commit message, nothing else.
       model: ChatCompletionModel.modelId(config.model),
       messages: [systemMessage, userMessage],
       temperature: 0.5,
-      maxTokens: 100,
+      maxTokens: 200,
     );
 
     try {

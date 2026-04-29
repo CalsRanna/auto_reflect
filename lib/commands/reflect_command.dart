@@ -158,9 +158,6 @@ class ReflectCommand extends Command {
   ReflectCommand() {
     argParser.addFlag('verbose', abbr: 'v', help: 'Verbose output');
     argParser.addFlag('no-ai', help: 'Disable AI analysis');
-    argParser.addFlag('override',
-        help:
-            'Disregard commit messages and generate work summaries from actual commit diffs using AI');
     argParser.addOption('date', help: 'Specify date (format: YYYY-MM-DD)');
     argParser.addOption('code-dir', help: 'Code directory path');
     argParser.addOption('output-dir', help: 'Reflect output directory path');
@@ -192,7 +189,6 @@ class ReflectCommand extends Command {
 
     final verbose = argResults?['verbose'] ?? false;
     final useAI = !(argResults?['no-ai'] ?? false);
-    final override = argResults?['override'] ?? false;
     final date = argResults?['date'];
     final codeDir = argResults?['code-dir'];
     final outputDir = argResults?['output-dir'];
@@ -258,30 +254,31 @@ class ReflectCommand extends Command {
         return;
       }
 
-      // 显示项目统计信息，参考auto_commit的格式
+      //  显示项目统计信息，参考auto_commit的格式
       var stat =
           await _getProjectStats(projectCommits, ignoredProjectsWithCommits);
       stdout.writeln(stat);
 
-      // 如果启用了 override，不再参考 commit message，改为每次读取 diff 生成工作内容
-      if (override && projectCommits.isNotEmpty) {
-        var overrideConfig = config;
+      AIAnalysisResult? aiAnalysis;
+      if (useAI) {
+        var aiConfig = await Config.load();
         if (language != null) {
-          overrideConfig = config.copyWith(language: language);
+          aiConfig = aiConfig.copyWith(language: language);
         }
 
-        if (overrideConfig.apiKey.isEmpty) {
+        if (aiConfig.apiKey.isEmpty) {
           stdout.writeln(
-              '⚠️  AI configuration is invalid or missing, skipping work summary generation');
+              '⚠️  AI configuration is invalid or missing, skipping AI analysis');
           stdout.writeln('Please run: journal config');
         } else {
-          // 统计所有需要处理的 commit 数量
+          // 统计所有需要处理的 commit 数量，用于进度显示
           var totalCommits = 0;
           for (var commits in projectCommits.values) {
             totalCommits += commits.length;
           }
 
-          if (totalCommits > 0) {
+          // 基于 diff 生成工作内容摘要（默认行为）
+          if (projectCommits.isNotEmpty && totalCommits > 0) {
             var processedCount = 0;
             _spinner.start(
                 'Generating work summaries from commit diffs (1/$totalCommits)');
@@ -296,23 +293,19 @@ class ReflectCommand extends Command {
                   _spinner.text =
                       'Generating work summaries from commit diffs ($processedCount/$totalCommits)';
 
-                  // 每次提交单独读取 diff
                   final diff = await gitService.getCommitDiff(
                       commit.hash, commit.projectPath);
 
                   if (diff.isEmpty) {
-                    // 如果无法获取 diff，保留原消息
                     rewrittenCommits.add(commit);
                     continue;
                   }
 
-                  // 使用 AI 基于 diff 生成工作内容摘要
                   final newMessage = await Generator.rewriteCommitMessage(
                     diff,
-                    config: overrideConfig,
+                    config: aiConfig,
                   );
 
-                  // 创建新的 GitCommit 对象，用 AI 生成的内容替换原 commit message
                   rewrittenCommits.add(GitCommit(
                     hash: commit.hash,
                     author: commit.author,
@@ -324,7 +317,6 @@ class ReflectCommand extends Command {
                   ));
                 }
 
-                // 替换原有的 commits
                 projectCommits[projectName] = rewrittenCommits;
               }
               _spinner.success();
@@ -333,77 +325,73 @@ class ReflectCommand extends Command {
               stdout.writeln('⚠️  Failed to generate work summaries: $e');
             }
           }
-        }
-      }
 
-      AIAnalysisResult? aiAnalysis;
-      if (useAI) {
-        var aiConfig = await Config.load();
-        if (language != null) {
-          aiConfig = aiConfig.copyWith(language: language);
-        }
-        if (aiConfig.apiKey.isEmpty) {
-          stdout.writeln(
-              '⚠️  AI configuration is invalid or missing, skipping AI analysis');
-          stdout.writeln('Please run: journal config');
-        } else {
-          try {
-            _spinner.start('Generating reflect');
-            // 只使用未被忽略的项目进行AI分析
-            aiAnalysis = await Generator.analyzeCommits(
-              projectCommits,
-              config: aiConfig,
-            );
-            _spinner.success();
-          } catch (e) {
-            _spinner.fail();
-            stdout.writeln('❌ AI analysis failed: $e');
-          }
-        }
+          // AI 多维分析 + DailyPost 分析 并发执行
+          final commitFuture = Generator.analyzeCommits(
+            projectCommits,
+            config: aiConfig,
+          );
 
-        // 从 DailyPost 中提取 learnings 和 beneficialWork
-        if (aiConfig.apiKey.isNotEmpty) {
           final dailyPostDir =
               dailyPostDirArg ?? aiConfig.dailyPostDirectory;
           final dailyPostFile = File(
               FileUtils.joinPath(dailyPostDir, '$today.md'));
+          logger.log('DailyPost path: ${dailyPostFile.path}');
+          Future<Map<String, List<String>>>? dailyFuture;
           if (await dailyPostFile.exists()) {
+            final dailyPostContent = await dailyPostFile.readAsString();
+            dailyFuture = Generator.analyzeDailyPost(
+              dailyPostContent,
+              config: aiConfig,
+            );
+          } else {
+            stdout.writeln('ℹ️  No DailyPost file: ${dailyPostFile.path}');
+          }
+
+          _spinner.start('Generating reflect');
+
+          var analysisOk = true;
+          try {
+            aiAnalysis = await commitFuture;
+          } catch (e) {
+            analysisOk = false;
+            stdout.writeln('❌ AI analysis failed: $e');
+          }
+
+          if (dailyFuture != null) {
             try {
-              _spinner.start('Analyzing DailyPost for learnings');
-              final dailyPostContent = await dailyPostFile.readAsString();
-              final dailyPostAnalysis = await Generator.analyzeDailyPost(
-                dailyPostContent,
-                config: aiConfig,
-              );
+              final dailyPostAnalysis = await dailyFuture;
+              final learnings = dailyPostAnalysis['learnings'] ?? [];
+              final beneficial = dailyPostAnalysis['beneficialWork'] ?? [];
+              if (learnings.isEmpty && beneficial.isEmpty) {
+                stdout.writeln('ℹ️  DailyPost analysis returned no items');
+              }
               if (aiAnalysis != null) {
                 aiAnalysis = AIAnalysisResult(
                   errorsAndIssues: aiAnalysis.errorsAndIssues,
                   nextImportantTasks: aiAnalysis.nextImportantTasks,
-                  beneficialWork:
-                      dailyPostAnalysis['beneficialWork'] ?? [],
+                  beneficialWork: beneficial,
                   highlights: aiAnalysis.highlights,
-                  learnings: dailyPostAnalysis['learnings'] ?? [],
+                  learnings: learnings,
                   rawResponse: aiAnalysis.rawResponse,
                 );
               } else {
                 aiAnalysis = AIAnalysisResult(
                   errorsAndIssues: [],
                   nextImportantTasks: [],
-                  beneficialWork:
-                      dailyPostAnalysis['beneficialWork'] ?? [],
+                  beneficialWork: beneficial,
                   highlights: [],
-                  learnings: dailyPostAnalysis['learnings'] ?? [],
+                  learnings: learnings,
                   rawResponse: '',
                 );
               }
-              _spinner.success();
             } catch (e) {
-              _spinner.fail();
+              analysisOk = false;
               stdout.writeln('⚠️  DailyPost analysis failed: $e');
             }
-          } else {
-            logger.log('No DailyPost file found for today');
           }
+
+          analysisOk ? _spinner.success() : _spinner.fail();
         }
       }
 

@@ -35,20 +35,18 @@ $commitsText
 Analyze the commits from multiple dimensions and return the results in the following JSON format:
 
 {
-  "errorsAndIssues": ["Small mistakes or failures I MADE (not what I fixed). Look at what the commit reveals about my oversight, sloppiness, or poor judgment. Examples: forgot edge case handling, left dead code after refactoring, broke a feature with a shared module change, introduced a regression bug, neglected to write tests, didn't check API compatibility, hardcoded a value that should be configurable"],
+  "errorsAndIssues": ["Mistakes I made. Read commits as confessions — what oversight, shortcut, or poor call do they reveal? Be specific: 'I forgot null check when...' not 'Fixed null pointer'. One real mistake per entry, don't over-slice a single commit."],
   "nextImportantTasks": ["Most important or difficult tasks for next working day. Include incomplete work, planned features, or TODO items mentioned in commits"],
   "highlights": ["Strange, unclear, ridiculous, or most troubling things at work. Examples: technical challenges, unclear requirements, difficult bugs, blockers, design trade-offs, unexpected behaviors, or issues unable to solve"]
 }
 
 CRITICAL REQUIREMENTS:
-1. "errorsAndIssues" MUST reflect MY OWN mistakes or oversights, NOT just describe what was fixed:
-   - Read the commit as a confession — what did I do wrong that this commit reveals?
-   - If a commit "fixes" something → I broke it earlier. What mistake caused the bug?
-   - If a commit "removes" unused code → I left dead code lingering. Where did I forget to clean up?
-   - If a commit "refactors" something → What was sloppy or wrong with the previous version?
-   - NEVER say "Fixed X" or "Removed Y" as the mistake itself — identify the ROOT mistake
-   - Example: commit "fix: null pointer in payment" → "I forgot to check for null before accessing payment object"
-   - Example: commit "refactor: remove unused entity class" → "I left unused entity code after previous module refactoring"
+1. "errorsAndIssues" — Write as personal, confessional notes to myself:
+   - Read each commit and ask: what did *I* do wrong that this commit reveals?
+   - Use natural first-person voice: "I forgot to...", "I left dead code after...", "I over-engineered..."
+   - NEVER describe what was fixed — describe what mistake I made.
+   - Be honest but don't over-interpret. 1-2 items total is usually enough, not one per changed file.
+   - If a commit is pure cleanup/refactoring without real error, it's fine to return empty.
 
 2. "highlights" field is MANDATORY - You MUST identify:
    - Technical challenges or blockers (difficult bugs, performance issues)
@@ -64,7 +62,7 @@ General Guidelines:
 - Infer context from commit patterns (e.g., multiple commits on same file = difficult problem)
 - Look for keywords: "feat", "fix", "add", "refactor", "optimize", "experiment", "try", "test"
 - DO NOT leave "errorsAndIssues" or "highlights" empty unless truly no relevant information exists
-- Use first person, but don't overuse "I"
+- errorsAndIssues uses confessional first-person; other fields use concise engineer tone
 - Return strictly in JSON format without other explanatory text
 ''';
 
@@ -112,38 +110,38 @@ General Guidelines:
     var prompt = '''
 $languageInstruction
 
-You are an expert at extracting actionable technical insights from daily tech news digests.
+You are an expert at extracting personally actionable technical insights from daily tech news digests.
 
-Based on the following daily tech/AI news digest, extract two types of insights:
+Based on the following daily tech/AI news digest, identify the most important things I personally learned or discovered today. Write from MY perspective — these are notes to myself about what I encountered.
 
-1. "learnings" - What did I learn today for future winning? Focus on:
-   - New AI tools, coding assistants, or automation tools discovered
-   - New LLMs, frameworks, or libraries announced
-   - Interesting experiments, approaches, or techniques mentioned
-   - Development workflows or best practices discovered
-   - New MCP servers, integrations, or toolchains
+1. "learnings" — What did I learn today for future winning?
+   New knowledge, tools, or techniques I encountered that I might use later. For example:
+   - a new AI tool, coding assistant, or automation tool I didn't know about
+   - a new LLM, framework, or library worth trying
+   - a technique, workflow, or best practice I picked up
+   - an MCP server, integration, or toolchain that could improve my workflow
 
-2. "beneficialWork" - What new development techniques, tools, or platform policies? Focus on:
-   - New development tools or techniques worth trying
-   - Platform policy changes or new requirements (App Store, cloud platforms, etc.)
-   - New APIs, SDKs, or services announced
-   - New open-source projects that could be useful
-   - Infrastructure or deployment improvements discovered
+2. "beneficialWork" — What new development techniques or platform policies affect my work?
+   Things I need to act on or be aware of for my daily development work. For example:
+   - a platform policy change that impacts me (App Store, cloud billing, API pricing)
+   - a new API, SDK, or service I could integrate
+   - an open-source project I should check out for a specific need
+   - an infrastructure or deployment technique worth adopting
 
-Rules:
-- Be specific and actionable (not generic observations)
-- Focus on items that are directly useful for a software developer's daily work
-- Extract concrete tools, techniques, and insights, not just news summaries
-- Write in concise bullet-point style
-- If no relevant insights exist for a category, return an empty array
+CRITICAL RULES:
+- Be SELECTIVE: only pick the 3-5 most important items per category. Quality over quantity. Skip trivial news.
+- Write from MY perspective, as personal notes to myself. Every item should feel like something I'd write down for my own reference — natural, conversational, first-person.
+- Focus on WHY it matters to me as a developer, not just WHAT the news said.
+- If nothing truly matters, return an empty array rather than padding with filler.
+- One sentence per item is ideal. Keep it tight.
 
 Daily Tech News Digest:
 $dailyPostContent
 
 Return ONLY a JSON object in the following format, nothing else:
 {
-  "learnings": ["insight 1", "insight 2"],
-  "beneficialWork": ["technique 1", "technique 2"]
+  "learnings": ["...", "..."],
+  "beneficialWork": ["...", "..."]
 }
 ''';
 
@@ -156,7 +154,6 @@ Return ONLY a JSON object in the following format, nothing else:
       model: ChatCompletionModel.modelId(config.model),
       messages: [systemMessage, userMessage],
       temperature: 0.5,
-      maxTokens: 600,
     );
 
     try {

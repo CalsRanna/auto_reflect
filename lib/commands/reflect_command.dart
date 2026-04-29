@@ -333,11 +333,11 @@ class ReflectCommand extends Command {
 
       AIAnalysisResult? aiAnalysis;
       if (useAI) {
-        var config = await Config.load();
+        var aiConfig = await Config.load();
         if (language != null) {
-          config = config.copyWith(language: language);
+          aiConfig = aiConfig.copyWith(language: language);
         }
-        if (config.apiKey.isEmpty) {
+        if (aiConfig.apiKey.isEmpty) {
           stdout.writeln(
               '⚠️  AI configuration is invalid or missing, skipping AI analysis');
           stdout.writeln('Please run: journal config');
@@ -347,12 +347,56 @@ class ReflectCommand extends Command {
             // 只使用未被忽略的项目进行AI分析
             aiAnalysis = await Generator.analyzeCommits(
               projectCommits,
-              config: config,
+              config: aiConfig,
             );
             _spinner.success();
           } catch (e) {
             _spinner.fail();
             stdout.writeln('❌ AI analysis failed: $e');
+          }
+        }
+
+        // 从 DailyPost 中提取 learnings 和 beneficialWork
+        if (aiConfig.apiKey.isNotEmpty) {
+          final dailyPostFile = File(FileUtils.joinPath(
+              FileUtils.joinPath(FileUtils.getHomeDirectory(), 'DailyPost'),
+              '$today.md'));
+          if (await dailyPostFile.exists()) {
+            try {
+              _spinner.start('Analyzing DailyPost for learnings');
+              final dailyPostContent = await dailyPostFile.readAsString();
+              final dailyPostAnalysis = await Generator.analyzeDailyPost(
+                dailyPostContent,
+                config: aiConfig,
+              );
+              if (aiAnalysis != null) {
+                aiAnalysis = AIAnalysisResult(
+                  errorsAndIssues: aiAnalysis.errorsAndIssues,
+                  nextImportantTasks: aiAnalysis.nextImportantTasks,
+                  beneficialWork:
+                      dailyPostAnalysis['beneficialWork'] ?? [],
+                  highlights: aiAnalysis.highlights,
+                  learnings: dailyPostAnalysis['learnings'] ?? [],
+                  rawResponse: aiAnalysis.rawResponse,
+                );
+              } else {
+                aiAnalysis = AIAnalysisResult(
+                  errorsAndIssues: [],
+                  nextImportantTasks: [],
+                  beneficialWork:
+                      dailyPostAnalysis['beneficialWork'] ?? [],
+                  highlights: [],
+                  learnings: dailyPostAnalysis['learnings'] ?? [],
+                  rawResponse: '',
+                );
+              }
+              _spinner.success();
+            } catch (e) {
+              _spinner.fail();
+              stdout.writeln('⚠️  DailyPost analysis failed: $e');
+            }
+          } else {
+            logger.log('No DailyPost file found for today');
           }
         }
       }

@@ -174,6 +174,10 @@ class ReflectCommand extends Command {
       abbr: 'l',
       help: 'Language for report generation (e.g., "zh-CN", "en-US", "ja-JP")',
     );
+    argParser.addOption(
+      'daily-post-directory',
+      help: 'DailyPost directory path',
+    );
     argParser.addMultiOption(
       'author',
       abbr: 'a',
@@ -194,6 +198,7 @@ class ReflectCommand extends Command {
     final outputDir = argResults?['output-dir'];
     final ignore = argResults?['ignore'];
     final language = argResults?['language'];
+    final dailyPostDirArg = argResults?['daily-post-directory'];
     final authors = argResults?['author'] as List<String>?;
 
     final logger = Logger(verbose: verbose);
@@ -358,9 +363,10 @@ class ReflectCommand extends Command {
 
         // 从 DailyPost 中提取 learnings 和 beneficialWork
         if (aiConfig.apiKey.isNotEmpty) {
-          final dailyPostFile = File(FileUtils.joinPath(
-              FileUtils.joinPath(FileUtils.getHomeDirectory(), 'DailyPost'),
-              '$today.md'));
+          final dailyPostDir =
+              dailyPostDirArg ?? aiConfig.dailyPostDirectory;
+          final dailyPostFile = File(
+              FileUtils.joinPath(dailyPostDir, '$today.md'));
           if (await dailyPostFile.exists()) {
             try {
               _spinner.start('Analyzing DailyPost for learnings');

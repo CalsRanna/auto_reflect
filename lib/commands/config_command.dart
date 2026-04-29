@@ -21,6 +21,10 @@ class ConfigCommand extends Command {
       ..addOption('set-code-directory', help: 'Set code directory path')
       ..addOption('set-output-directory', help: 'Set output directory path')
       ..addOption(
+        'set-daily-post-directory',
+        help: 'Set DailyPost directory path',
+      )
+      ..addOption(
         'set-ignore',
         help: 'Set ignore folders (comma-separated, saved as YAML list)',
       )
@@ -52,6 +56,8 @@ class ConfigCommand extends Command {
       return _setCodeDirectory(config);
     if (argResults?['set-output-directory'] != null)
       return _setOutputDirectory(config);
+    if (argResults?['set-daily-post-directory'] != null)
+      return _setDailyPostDirectory(config);
     if (argResults?['set-ignore'] != null) return _setIgnore(config);
     if (argResults?['set-language'] != null) return _setLanguage(config);
     if (argResults?['set-authors'] != null) return _setAuthors(config);
@@ -91,6 +97,13 @@ class ConfigCommand extends Command {
       outputDirInput = defaultConfig.outputDirectory;
     }
 
+    stdout.write(
+        'Enter DailyPost Directory (default: ${defaultConfig.dailyPostDirectory}): ');
+    var dailyPostDirInput = stdin.readLineSync()?.trim() ?? '';
+    if (dailyPostDirInput.isEmpty) {
+      dailyPostDirInput = defaultConfig.dailyPostDirectory;
+    }
+
     stdout.write('Enter Ignore Folders (comma-separated, optional): ');
     var ignoreInput = stdin.readLineSync()?.trim() ?? '';
 
@@ -115,6 +128,7 @@ class ConfigCommand extends Command {
         apiKey: apiKey,
         codeDirectory: codeDirInput,
         outputDirectory: outputDirInput,
+        dailyPostDirectory: dailyPostDirInput,
         ignore: _parseCsvList(ignoreInput),
         language: languageInput,
         authors: authorsInput,
@@ -183,6 +197,13 @@ class ConfigCommand extends Command {
     _show(config);
   }
 
+  Future<void> _setDailyPostDirectory(Config config) async {
+    config.dailyPostDirectory = argResults!['set-daily-post-directory'].toString();
+    await config.save();
+    stdout.writeln('\nDailyPost directory set successfully');
+    _show(config);
+  }
+
   void _show(Config config) {
     stdout.writeln('Journal CLI Configuration\n');
     var apiKey = config.apiKey;
@@ -198,6 +219,7 @@ class ConfigCommand extends Command {
     stdout.writeln('Model: ${config.model}');
     stdout.writeln('Code Directory: ${config.codeDirectory}');
     stdout.writeln('Output Directory: ${config.outputDirectory}');
+    stdout.writeln('DailyPost Directory: ${config.dailyPostDirectory}');
     if (config.ignore.isEmpty) {
       stdout.writeln('Ignore Folders: (none)');
     } else {

@@ -2,7 +2,7 @@
 # This file defines how your package should be built and published
 
 name: journal
-version: 2.2.0
+version: 2.2.1
 description: Automatic Git work log generator with AI analysis.
 homepage: https://github.com/CalsRanna/auto_reflect
 repository: https://github.com/CalsRanna/auto_reflect.git
@@ -10,4 +10,4 @@ license: MIT
 
 tap: inspire
 asset: build/journal
-checksum: e3b5e082f3e3edd6d614e75ecb34016a8516c45711e888141dc057ec32530155
+checksum: fd81cc876b9910c43fb6458ac4a963169b0e7fdd1dd3903defd7beb8d777a23d

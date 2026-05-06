@@ -1,11 +1,11 @@
 enum StatusMarker {
-  success('[✓]'),
-  error('[✗]'),
-  warning('[!]'),
-  bullet('•'),
-  successBullet('✓'),
-  errorBullet('✗'),
-  warningBullet('!');
+  success('[OK]'),
+  error('[FAIL]'),
+  warning('[WARN]'),
+  bullet('-'),
+  successBullet('OK'),
+  errorBullet('FAIL'),
+  warningBullet('WARN');
 
   final String symbol;
 

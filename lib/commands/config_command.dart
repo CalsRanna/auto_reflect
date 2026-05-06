@@ -4,12 +4,12 @@ import 'package:args/command_runner.dart';
 import 'package:auto_reflect/models/config.dart';
 
 void handleError(String message) {
-  stderr.writeln('❌ $message');
+  stderr.writeln('[ERROR] $message');
   exit(1);
 }
 
 void showSuccess(String message) {
-  stdout.writeln('✅ $message');
+  stdout.writeln('[OK] $message');
 }
 
 class ConfigCommand extends Command {

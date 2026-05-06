@@ -7,16 +7,17 @@ import '../models/ai_analysis.dart';
 import '../models/git_commit.dart';
 import '../services/git_service.dart';
 import '../services/generator.dart';
+import '../services/news_service.dart';
 import '../services/report_service.dart';
 import '../utils/logger.dart';
 import '../utils/file_utils.dart';
 
 void showSuccess(String message) {
-  stdout.writeln('✅ $message');
+  stdout.writeln('[OK] $message');
 }
 
 void handleError(String message) {
-  stderr.writeln('❌ $message');
+  stderr.writeln('[ERROR] $message');
   exit(1);
 }
 
@@ -146,6 +147,20 @@ List<String>? _mergeAuthorLists(
   return null;
 }
 
+List<String> _mergeAnalysisItems(
+    List<String> preferredItems, List<String> fallbackItems) {
+  final merged = <String>[];
+  final seen = <String>{};
+
+  for (final item in [...preferredItems, ...fallbackItems]) {
+    final trimmed = item.trim();
+    if (trimmed.isEmpty || !seen.add(trimmed)) continue;
+    merged.add(trimmed);
+  }
+
+  return merged;
+}
+
 class ReflectCommand extends Command {
   final _spinner = CliSpin(spinner: CliSpinners.dots5);
 
@@ -171,10 +186,6 @@ class ReflectCommand extends Command {
       abbr: 'l',
       help: 'Language for report generation (e.g., "zh-CN", "en-US", "ja-JP")',
     );
-    argParser.addOption(
-      'daily-post-directory',
-      help: 'DailyPost directory path',
-    );
     argParser.addMultiOption(
       'author',
       abbr: 'a',
@@ -185,7 +196,7 @@ class ReflectCommand extends Command {
 
   @override
   Future<void> run() async {
-    stdout.writeln('\n✧ ────────────── AUTO REFLECT ────────────── ✧\n');
+    stdout.writeln('\n--- AUTO REFLECT ---\n');
 
     final verbose = argResults?['verbose'] ?? false;
     final useAI = !(argResults?['no-ai'] ?? false);
@@ -194,7 +205,6 @@ class ReflectCommand extends Command {
     final outputDir = argResults?['output-dir'];
     final ignore = argResults?['ignore'];
     final language = argResults?['language'];
-    final dailyPostDirArg = argResults?['daily-post-directory'];
     final authors = argResults?['author'] as List<String>?;
 
     final logger = Logger(verbose: verbose);
@@ -268,7 +278,7 @@ class ReflectCommand extends Command {
 
         if (aiConfig.apiKey.isEmpty) {
           stdout.writeln(
-              '⚠️  AI configuration is invalid or missing, skipping AI analysis');
+              '[WARN] AI configuration is invalid or missing, skipping AI analysis');
           stdout.writeln('Please run: journal config');
         } else {
           // 统计所有需要处理的 commit 数量，用于进度显示
@@ -322,7 +332,7 @@ class ReflectCommand extends Command {
               _spinner.success();
             } catch (e) {
               _spinner.fail();
-              stdout.writeln('⚠️  Failed to generate work summaries: $e');
+              stdout.writeln('[WARN] Failed to generate work summaries: $e');
             }
           }
 
@@ -332,21 +342,9 @@ class ReflectCommand extends Command {
             config: aiConfig,
           );
 
-          final dailyPostDir =
-              dailyPostDirArg ?? aiConfig.dailyPostDirectory;
-          final dailyPostFile = File(
-              FileUtils.joinPath(dailyPostDir, '$today.md'));
-          logger.log('DailyPost path: ${dailyPostFile.path}');
-          Future<Map<String, List<String>>>? dailyFuture;
-          if (await dailyPostFile.exists()) {
-            final dailyPostContent = await dailyPostFile.readAsString();
-            dailyFuture = Generator.analyzeDailyPost(
-              dailyPostContent,
-              config: aiConfig,
-            );
-          } else {
-            stdout.writeln('ℹ️  No DailyPost file: ${dailyPostFile.path}');
-          }
+          // 用 NewsService 自动抓取 AI 日报
+          final newsService = NewsService(logger: logger);
+          final newsFuture = newsService.fetchDailyNews(today);
 
           _spinner.start('Generating reflect');
 
@@ -355,24 +353,31 @@ class ReflectCommand extends Command {
             aiAnalysis = await commitFuture;
           } catch (e) {
             analysisOk = false;
-            stdout.writeln('❌ AI analysis failed: $e');
+            stdout.writeln('[ERROR] AI analysis failed: $e');
           }
 
-          if (dailyFuture != null) {
-            try {
-              final dailyPostAnalysis = await dailyFuture;
+          // 等待新闻抓取完成，然后进行 AI 分析
+          try {
+            final dailyNewsContent = await newsFuture;
+            if (dailyNewsContent != null) {
+              final dailyPostAnalysis = await Generator.analyzeDailyPost(
+                dailyNewsContent,
+                config: aiConfig,
+              );
               final learnings = dailyPostAnalysis['learnings'] ?? [];
               final beneficial = dailyPostAnalysis['beneficialWork'] ?? [];
               if (learnings.isEmpty && beneficial.isEmpty) {
-                stdout.writeln('ℹ️  DailyPost analysis returned no items');
+                stdout.writeln('[INFO] DailyPost analysis returned no items');
               }
               if (aiAnalysis != null) {
                 aiAnalysis = AIAnalysisResult(
                   errorsAndIssues: aiAnalysis.errorsAndIssues,
                   nextImportantTasks: aiAnalysis.nextImportantTasks,
-                  beneficialWork: beneficial,
+                  beneficialWork: _mergeAnalysisItems(
+                      beneficial, aiAnalysis.beneficialWork),
                   highlights: aiAnalysis.highlights,
-                  learnings: learnings,
+                  learnings:
+                      _mergeAnalysisItems(learnings, aiAnalysis.learnings),
                   rawResponse: aiAnalysis.rawResponse,
                 );
               } else {
@@ -385,10 +390,10 @@ class ReflectCommand extends Command {
                   rawResponse: '',
                 );
               }
-            } catch (e) {
-              analysisOk = false;
-              stdout.writeln('⚠️  DailyPost analysis failed: $e');
             }
+          } catch (e) {
+            analysisOk = false;
+            stdout.writeln('[WARN] DailyPost analysis failed: $e');
           }
 
           analysisOk ? _spinner.success() : _spinner.fail();
@@ -407,14 +412,15 @@ class ReflectCommand extends Command {
                 highlights: [],
                 learnings: [],
                 rawResponse: '',
-              ));
+              ),
+          language: language ?? config.language);
 
       final reportPath = FileUtils.joinPath(reflectFolderPath, '$today.md');
       await reportService.saveReport(
           Directory(reflectFolderPath), today, report);
 
       // 使用新的完成格式
-      stdout.writeln('\n✨ Reflect completed ($reportPath)');
+      stdout.writeln('\nReflect completed ($reportPath)');
     } catch (e) {
       _spinner.fail();
       handleError('Error generating log: $e');

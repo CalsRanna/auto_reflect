@@ -21,14 +21,18 @@ class Generator {
     );
 
     var languageInstruction = _getLanguageInstruction(config.language);
+    var userLanguageReminder = _getUserLanguageReminder(config.language);
     var commitsText = _formatCommitsForAI(commits);
+
+    var writingStyle = _getPersonalWritingStyle(config.language);
 
     var prompt = '''
 $languageInstruction
+$writingStyle
 
-You are a professional software development consultant who specializes in analyzing code commit records and providing valuable work insights.
+You are helping me turn Git commits into a daily self-reflection.
 
-Based on the following Git commit records, conduct a comprehensive work analysis. Write like an engineer taking technical notes, using concise and objective tone, avoiding exaggeration and self-praise.
+Based on the following Git commit records, write practical notes that sound like I wrote them after work. Stay grounded in the commits and avoid exaggeration or self-praise.
 
 $commitsText
 
@@ -37,6 +41,8 @@ Analyze the commits from multiple dimensions and return the results in the follo
 {
   "errorsAndIssues": ["Mistakes I made. Read commits as confessions — what oversight, shortcut, or poor call do they reveal? Be specific: 'I forgot null check when...' not 'Fixed null pointer'. One real mistake per entry, don't over-slice a single commit."],
   "nextImportantTasks": ["Most important or difficult tasks for next working day. Include incomplete work, planned features, or TODO items mentioned in commits"],
+  "learnings": ["Concrete things I learned, rediscovered, or experimented with from today's work. This field is required."],
+  "beneficialWork": ["Development techniques, workflow improvements, reusable implementation patterns, or platform/API/policy implications that affect my work. This field is required."],
   "highlights": ["Strange, unclear, ridiculous, or most troubling things at work. Examples: technical challenges, unclear requirements, difficult bugs, blockers, design trade-offs, unexpected behaviors, or issues unable to solve"]
 }
 
@@ -56,26 +62,34 @@ CRITICAL REQUIREMENTS:
    - Areas needing improvement or refactoring
    Example: If commits show multiple attempts to fix the same issue, highlight the challenge
 
+3. "learnings", "beneficialWork", and "highlights" are REQUIRED:
+   - Return at least one concrete item for each of these three fields.
+   - Do NOT use placeholders such as "", "None", "null", "N/A", or "No items".
+   - If there is no obvious industry/news context, infer the learning or useful development technique from the commit work itself.
+
 General Guidelines:
-- Use concise, objective engineer tone
+- Use natural first-person work-note tone
 - Base analysis strictly on commit information
 - Infer context from commit patterns (e.g., multiple commits on same file = difficult problem)
 - Look for keywords: "feat", "fix", "add", "refactor", "optimize", "experiment", "try", "test"
-- DO NOT leave "errorsAndIssues" or "highlights" empty unless truly no relevant information exists
-- errorsAndIssues uses confessional first-person; other fields use concise engineer tone
+- "errorsAndIssues" and "nextImportantTasks" are optional and may be empty when there is no honest signal
+- DO NOT leave required fields empty
+- Avoid corporate or AI-sounding phrases like "reusable pattern", "improving robustness", "clarifies the API contract", "downstream consumers", or "worth watching" unless those exact words are necessary
+- errorsAndIssues uses confessional first-person; other fields should still sound like my own notes
 - Return strictly in JSON format without other explanatory text
 ''';
 
     var systemMessage = ChatCompletionMessage.system(content: prompt);
     var userMessage = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string(commitsText),
+      content: ChatCompletionUserMessageContent.string(
+          '$userLanguageReminder\n\n$commitsText'),
     );
 
     var request = CreateChatCompletionRequest(
       model: ChatCompletionModel.modelId(config.model),
       messages: [systemMessage, userMessage],
       temperature: 0.7,
-      maxTokens: 1000,
+      maxTokens: 1600,
     );
 
     try {
@@ -106,23 +120,35 @@ General Guidelines:
     );
 
     var languageInstruction = _getLanguageInstruction(config.language);
+    var userLanguageReminder = _getUserLanguageReminder(config.language);
+    var targetLanguage = _languageName(config.language);
+
+    var writingStyle = _getPersonalWritingStyle(config.language);
 
     var prompt = '''
 $languageInstruction
+$writingStyle
 
-You are an expert at extracting personally actionable technical insights from daily tech news digests.
+You are helping me extract personally useful notes from a daily tech news digest.
 
 Based on the following daily tech/AI news digest, identify the most important things I personally learned or discovered today. Write from MY perspective — these are notes to myself about what I encountered.
 
+OUTPUT LANGUAGE FOR DAILY NEWS:
+- The news digest may be written in Chinese, English, or mixed languages.
+- Your output MUST be written in $targetLanguage, matching the user's configured language.
+- Translate and adapt every selected news item into $targetLanguage before returning it.
+- Do NOT copy the source news sentence in its original language unless the source language is already $targetLanguage.
+- Keep product names, model names, company names, API names, prices, and technical identifiers unchanged when needed.
+
 1. "learnings" — What did I learn today for future winning?
-   New knowledge, tools, or techniques I encountered that I might use later. For example:
+   Every item in this array must be written in $targetLanguage. New knowledge, tools, or techniques I encountered that I might use later. For example:
    - a new AI tool, coding assistant, or automation tool I didn't know about
    - a new LLM, framework, or library worth trying
    - a technique, workflow, or best practice I picked up
    - an MCP server, integration, or toolchain that could improve my workflow
 
 2. "beneficialWork" — What new development techniques or platform policies affect my work?
-   Things I need to act on or be aware of for my daily development work. For example:
+   Every item in this array must be written in $targetLanguage. Things I need to act on or be aware of for my daily development work. For example:
    - a platform policy change that impacts me (App Store, cloud billing, API pricing)
    - a new API, SDK, or service I could integrate
    - an open-source project I should check out for a specific need
@@ -132,7 +158,10 @@ CRITICAL RULES:
 - Be SELECTIVE: only pick the 3-5 most important items per category. Quality over quantity. Skip trivial news.
 - Write from MY perspective, as personal notes to myself. Every item should feel like something I'd write down for my own reference — natural, conversational, first-person.
 - Focus on WHY it matters to me as a developer, not just WHAT the news said.
-- If nothing truly matters, return an empty array rather than padding with filler.
+- Both "learnings" and "beneficialWork" are required when the digest has usable content. Return at least one concrete item for each category.
+- Do NOT use placeholders such as "", "None", "null", "N/A", or "No items".
+- Do NOT mix languages inside prose. The only exceptions are names and technical identifiers.
+- Avoid press-release language. If a news item does not clearly affect my work, skip it.
 - One sentence per item is ideal. Keep it tight.
 
 Daily Tech News Digest:
@@ -147,7 +176,8 @@ Return ONLY a JSON object in the following format, nothing else:
 
     var systemMessage = ChatCompletionMessage.system(content: prompt);
     var userMessage = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string(dailyPostContent),
+      content: ChatCompletionUserMessageContent.string(
+          '$userLanguageReminder\n\nDaily Tech News Digest:\n$dailyPostContent'),
     );
 
     var request = CreateChatCompletionRequest(
@@ -184,20 +214,24 @@ Return ONLY a JSON object in the following format, nothing else:
     );
 
     var languageInstruction = _getLanguageInstruction(config.language);
+    var userLanguageReminder = _getUserLanguageReminder(config.language);
+
+    var writingStyle = _getPersonalWritingStyle(config.language);
 
     var prompt = '''
 $languageInstruction
+$writingStyle
 
-You are an expert at analyzing code changes and summarizing the actual work performed.
+You are helping me summarize one commit for my daily work log.
 
-Based on the following git diff, generate a concise summary of what work was actually done in this commit. Read the diff carefully and describe the actual changes and their purpose.
+Based on the following git diff, generate a concise summary of what I actually did in this commit. Read the diff carefully and describe the actual changes and their purpose.
 
 Rules:
-1. Write 1-2 sentences describing the actual work completed
+1. Write 1 sentence describing the actual work completed
 2. Be specific about what was implemented, fixed, or changed
 3. Use clear, descriptive language - avoid generic descriptions like "updated code"
 4. Focus on the substance and purpose of the changes
-5. Write in a professional but natural style, suitable for daily work reports
+5. Write like a natural work-log note, not a marketing or architecture review sentence
 
 Git Diff:
 $diff
@@ -207,7 +241,8 @@ Return ONLY the work summary, nothing else.
 
     var systemMessage = ChatCompletionMessage.system(content: prompt);
     var userMessage = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string(diff),
+      content: ChatCompletionUserMessageContent.string(
+          '$userLanguageReminder\n\n$diff'),
     );
 
     var request = CreateChatCompletionRequest(
@@ -220,7 +255,7 @@ Return ONLY the work summary, nothing else.
     try {
       var response = await client.createChatCompletion(request: request);
       var content = response.choices.first.message.content ?? '';
-      return content.trim();
+      return _sanitizeScalarText(content);
     } finally {
       client.endSession();
     }
@@ -251,12 +286,11 @@ Return ONLY the work summary, nothing else.
       final Map<String, dynamic> jsonData = jsonDecode(jsonContent);
 
       return AIAnalysisResult(
-        errorsAndIssues: List<String>.from(jsonData['errorsAndIssues'] ?? []),
-        nextImportantTasks:
-            List<String>.from(jsonData['nextImportantTasks'] ?? []),
-        beneficialWork: List<String>.from(jsonData['beneficialWork'] ?? []),
-        highlights: List<String>.from(jsonData['highlights'] ?? []),
-        learnings: List<String>.from(jsonData['learnings'] ?? []),
+        errorsAndIssues: _readStringList(jsonData['errorsAndIssues']),
+        nextImportantTasks: _readStringList(jsonData['nextImportantTasks']),
+        beneficialWork: _readStringList(jsonData['beneficialWork']),
+        highlights: _readStringList(jsonData['highlights']),
+        learnings: _readStringList(jsonData['learnings']),
         rawResponse: content,
       );
     } catch (e) {
@@ -280,8 +314,8 @@ Return ONLY the work summary, nothing else.
       final Map<String, dynamic> jsonData = jsonDecode(jsonContent);
 
       return {
-        'learnings': List<String>.from(jsonData['learnings'] ?? []),
-        'beneficialWork': List<String>.from(jsonData['beneficialWork'] ?? []),
+        'learnings': _readStringList(jsonData['learnings']),
+        'beneficialWork': _readStringList(jsonData['beneficialWork']),
       };
     } catch (e) {
       return {
@@ -292,16 +326,99 @@ Return ONLY the work summary, nothing else.
   }
 
   static String _getLanguageInstruction(String language) {
+    final languageName = _languageName(language);
+    return '''
+IMPORTANT LANGUAGE RULE:
+- Write every user-visible string in $languageName.
+- JSON keys must stay in English, but every JSON string value must be in $languageName.
+- If source material is in another language, translate and adapt it into $languageName.
+- Do not mix languages unless a product name, API name, class name, error code, or technical identifier must stay as-is.
+- Do not use emojis.
+''';
+  }
+
+  static String _getUserLanguageReminder(String language) {
+    final languageName = _languageName(language);
+    return '''
+Target output language: $languageName.
+Translate or rewrite all prose into $languageName before returning the answer.
+Keep product names, API names, class names, error codes, file names, and technical identifiers unchanged.
+''';
+  }
+
+  static String _getPersonalWritingStyle(String language) {
     return switch (language) {
-      'zh-CN' => 'IMPORTANT: You must respond in Simplified Chinese (简体中文).',
-      'zh-TW' => 'IMPORTANT: You must respond in Traditional Chinese (繁體中文).',
-      'ja-JP' => 'IMPORTANT: You must respond in Japanese (日本語).',
-      'ko-KR' => 'IMPORTANT: You must respond in Korean (한국어).',
-      'es-ES' => 'IMPORTANT: You must respond in Spanish (Español).',
-      'fr-FR' => 'IMPORTANT: You must respond in French (Français).',
-      'de-DE' => 'IMPORTANT: You must respond in German (Deutsch).',
-      'en-US' => 'IMPORTANT: You must respond in English (English).', // Default
-      _ => '',
+      'zh-CN' => '''
+WRITING STYLE:
+- 写得像我自己的日终复盘，不要像咨询报告、PR 稿或 AI 总结。
+- 句子要具体、朴素、带一点真实工作感；可以用“我今天发现...”“这个地方之后要留意...”。
+- 不要使用“提升健壮性”“赋能”“闭环”“最佳实践沉淀”“可复用模式”等套话，除非提交内容真的在说这些。
+''',
+      'zh-TW' => '''
+WRITING STYLE:
+- 寫得像我自己的日終復盤，不要像顧問報告、公關稿或 AI 摘要。
+- 句子要具體、樸素、帶一點真實工作感；可以用「我今天發現...」「這個地方之後要留意...」。
+- 不要使用套話，除非提交內容真的在說那些事情。
+''',
+      _ => '''
+WRITING STYLE:
+- Write like my own end-of-day notes, not a consulting report, press release, or AI summary.
+- Be concrete and plainspoken. A little first-person is good.
+- Avoid buzzwords and inflated claims.
+''',
     };
+  }
+
+  static String _languageName(String language) {
+    return switch (language) {
+      'zh-CN' => 'Simplified Chinese (简体中文)',
+      'zh-TW' => 'Traditional Chinese (繁體中文)',
+      'ja-JP' => 'Japanese (日本語)',
+      'ko-KR' => 'Korean (한국어)',
+      'es-ES' => 'Spanish (Español)',
+      'fr-FR' => 'French (Français)',
+      'de-DE' => 'German (Deutsch)',
+      'en-US' => 'English',
+      _ => language.trim().isEmpty ? 'English' : language,
+    };
+  }
+
+  static List<String> _readStringList(dynamic value) {
+    final rawItems = switch (value) {
+      List() => value,
+      String() => [value],
+      _ => const [],
+    };
+
+    return rawItems
+        .map((item) => item?.toString().trim() ?? '')
+        .where((item) => !_isPlaceholder(item))
+        .map(_sanitizeScalarText)
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  static String _sanitizeScalarText(String value) {
+    final trimmed = value.trim();
+    if (_isPlaceholder(trimmed)) return '';
+    return trimmed;
+  }
+
+  static bool _isPlaceholder(String value) {
+    final normalized =
+        value.replaceAll(RegExp(r'^[\*\-_`]+|[\*\-_`]+$'), '').trim();
+    if (normalized.isEmpty) return true;
+
+    final lower = normalized.toLowerCase();
+    return {
+      'none',
+      'null',
+      'n/a',
+      'na',
+      'no items',
+      'no item',
+      'nothing',
+      'empty',
+    }.contains(lower);
   }
 }

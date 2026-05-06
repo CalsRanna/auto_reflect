@@ -1,6 +1,6 @@
 name: auto_reflect
 description: Automatic Git work log generator with AI analysis.
-version: 2.1.0+31
+version: 2.2.0+34
 
 environment:
   sdk: ^3.5.4

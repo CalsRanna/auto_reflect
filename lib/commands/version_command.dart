@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 
+const _version = String.fromEnvironment('JOURNAL_VERSION', defaultValue: 'dev');
+
 class VersionCommand extends Command {
   @override
   String get description => 'Print current version';
@@ -14,6 +16,6 @@ class VersionCommand extends Command {
 
   @override
   Future<void> run() async {
-    stdout.writeln('Journal 1.0.6');
+    stdout.writeln('Journal $_version');
   }
 }

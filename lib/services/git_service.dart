@@ -35,7 +35,8 @@ class GitService {
 
         final gitDir = Directory(path.join(entity.path, '.git'));
         if (await gitDir.exists()) {
-          final projectCommits = await _getCommitsForDate(entity.path, date, authors: authors);
+          final projectCommits =
+              await _getCommitsForDate(entity.path, date, authors: authors);
           if (projectCommits.isNotEmpty) {
             commits[projectName] = projectCommits;
           }
@@ -69,8 +70,8 @@ class GitService {
     }
   }
 
-  Future<List<GitCommit>> _getCommitsForDate(
-      String projectPath, String date, {List<String>? authors}) async {
+  Future<List<GitCommit>> _getCommitsForDate(String projectPath, String date,
+      {List<String>? authors}) async {
     try {
       var gitCommand = [
         'log',

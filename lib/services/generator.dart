@@ -41,8 +41,8 @@ Analyze the commits from multiple dimensions and return the results in the follo
 {
   "errorsAndIssues": ["Mistakes I made. Read commits as confessions — what oversight, shortcut, or poor call do they reveal? Be specific: 'I forgot null check when...' not 'Fixed null pointer'. One real mistake per entry, don't over-slice a single commit."],
   "nextImportantTasks": ["Most important or difficult tasks for next working day. Include incomplete work, planned features, or TODO items mentioned in commits"],
-  "learnings": ["Concrete things I learned, rediscovered, or experimented with from today's work. This field is required."],
-  "beneficialWork": ["Development techniques, workflow improvements, reusable implementation patterns, or platform/API/policy implications that affect my work. This field is required."],
+  "learnings": ["What I learned today that helps me win in the future: how I used AI tools, prompts I refined, AI resources or workflows worth keeping, plus concrete techniques I learned or rediscovered from the work itself. This field is required."],
+  "beneficialWork": ["What I did today that is good for customers or for the industry. Focus on the long-term interest of the majority of users: bugs that hurt them, features they asked for, performance or reliability they will feel, work others can reuse. Leave empty if today's commits are purely internal chores with no user-facing value."],
   "highlights": ["Strange, unclear, ridiculous, or most troubling things at work. Examples: technical challenges, unclear requirements, difficult bugs, blockers, design trade-offs, unexpected behaviors, or issues unable to solve"]
 }
 
@@ -62,17 +62,22 @@ CRITICAL REQUIREMENTS:
    - Areas needing improvement or refactoring
    Example: If commits show multiple attempts to fix the same issue, highlight the challenge
 
-3. "learnings", "beneficialWork", and "highlights" are REQUIRED:
-   - Return at least one concrete item for each of these three fields.
+3. "learnings" and "highlights" are REQUIRED:
+   - Return at least one concrete item for each of these two fields.
    - Do NOT use placeholders such as "", "None", "null", "N/A", or "No items".
-   - If there is no obvious industry/news context, infer the learning or useful development technique from the commit work itself.
+   - If there is no obvious AI-tool or industry context, infer the learning from the commit work itself.
+
+4. "beneficialWork" — answer from the customer's side, not mine:
+   - Say what a user or the wider industry actually gets out of today's work.
+   - Write it as a benefit, not as a task list: "users on old devices stop hitting the crash..." not "fixed crash".
+   - It is fine to return an empty array when today's work has no honest customer-facing benefit.
 
 General Guidelines:
 - Use natural first-person work-note tone
 - Base analysis strictly on commit information
 - Infer context from commit patterns (e.g., multiple commits on same file = difficult problem)
 - Look for keywords: "feat", "fix", "add", "refactor", "optimize", "experiment", "try", "test"
-- "errorsAndIssues" and "nextImportantTasks" are optional and may be empty when there is no honest signal
+- "errorsAndIssues", "nextImportantTasks", and "beneficialWork" are optional and may be empty when there is no honest signal
 - DO NOT leave required fields empty
 - Avoid corporate or AI-sounding phrases like "reusable pattern", "improving robustness", "clarifies the API contract", "downstream consumers", or "worth watching" unless those exact words are necessary
 - errorsAndIssues uses confessional first-person; other fields should still sound like my own notes
@@ -101,10 +106,10 @@ General Guidelines:
     }
   }
 
-  /// 分析 DailyPost 文件内容，提取 learnings 和 beneficialWork
+  /// 分析 DailyPost 文件内容，提取 learnings
   ///
-  /// 从 DailyPost 的行业新闻中提取：学到的新工具/方法/AI工具、新的开发技术/政策
-  static Future<Map<String, List<String>>> analyzeDailyPost(
+  /// 对应日报第 2 项：AI 工具的使用、Prompt 优化、有效 AI 资源的分享
+  static Future<List<String>> analyzeDailyPost(
     String dailyPostContent, {
     required Config config,
   }) async {
@@ -140,25 +145,19 @@ OUTPUT LANGUAGE FOR DAILY NEWS:
 - Do NOT copy the source news sentence in its original language unless the source language is already $targetLanguage.
 - Keep product names, model names, company names, API names, prices, and technical identifiers unchanged when needed.
 
-1. "learnings" — What did I learn today for future winning?
-   Every item in this array must be written in $targetLanguage. New knowledge, tools, or techniques I encountered that I might use later. For example:
-   - a new AI tool, coding assistant, or automation tool I didn't know about
-   - a new LLM, framework, or library worth trying
-   - a technique, workflow, or best practice I picked up
+1. "learnings" — What did I learn today that helps me win in the future?
+   Every item in this array must be written in $targetLanguage. Focus on AI tools, prompt techniques, and effective AI resources I could actually adopt. For example:
+   - a new AI tool, coding assistant, or agent I didn't know about
+   - a new LLM, framework, or library worth trying, and what it is good at
+   - a prompting technique, workflow, or best practice I could reuse
    - an MCP server, integration, or toolchain that could improve my workflow
-
-2. "beneficialWork" — What new development techniques or platform policies affect my work?
-   Every item in this array must be written in $targetLanguage. Things I need to act on or be aware of for my daily development work. For example:
-   - a platform policy change that impacts me (App Store, cloud billing, API pricing)
-   - a new API, SDK, or service I could integrate
-   - an open-source project I should check out for a specific need
-   - an infrastructure or deployment technique worth adopting
+   - a platform, API, or pricing change that changes which tool I should reach for
 
 CRITICAL RULES:
-- Be SELECTIVE: only pick the 3-5 most important items per category. Quality over quantity. Skip trivial news.
+- Be SELECTIVE: only pick the 3-5 most important items. Quality over quantity. Skip trivial news.
 - Write from MY perspective, as personal notes to myself. Every item should feel like something I'd write down for my own reference — natural, conversational, first-person.
 - Focus on WHY it matters to me as a developer, not just WHAT the news said.
-- Both "learnings" and "beneficialWork" are required when the digest has usable content. Return at least one concrete item for each category.
+- Return at least one concrete item when the digest has usable content.
 - Do NOT use placeholders such as "", "None", "null", "N/A", or "No items".
 - Do NOT mix languages inside prose. The only exceptions are names and technical identifiers.
 - Avoid press-release language. If a news item does not clearly affect my work, skip it.
@@ -169,8 +168,7 @@ $dailyPostContent
 
 Return ONLY a JSON object in the following format, nothing else:
 {
-  "learnings": ["...", "..."],
-  "beneficialWork": ["...", "..."]
+  "learnings": ["...", "..."]
 }
 ''';
 
@@ -306,22 +304,16 @@ Return ONLY the work summary, nothing else.
     }
   }
 
-  static Map<String, List<String>> _parseDailyPostResponse(String content) {
+  static List<String> _parseDailyPostResponse(String content) {
     try {
       final jsonContent =
           content.replaceAll(RegExp(r'^```json\s*|\s*```$'), '').trim();
 
       final Map<String, dynamic> jsonData = jsonDecode(jsonContent);
 
-      return {
-        'learnings': _readStringList(jsonData['learnings']),
-        'beneficialWork': _readStringList(jsonData['beneficialWork']),
-      };
+      return _readStringList(jsonData['learnings']);
     } catch (e) {
-      return {
-        'learnings': <String>[],
-        'beneficialWork': <String>[],
-      };
+      return <String>[];
     }
   }
 

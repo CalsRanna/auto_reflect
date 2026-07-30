@@ -360,33 +360,30 @@ class ReflectCommand extends Command {
           try {
             final dailyNewsContent = await newsFuture;
             if (dailyNewsContent != null) {
-              final dailyPostAnalysis = await Generator.analyzeDailyPost(
+              final newsLearnings = await Generator.analyzeDailyPost(
                 dailyNewsContent,
                 config: aiConfig,
               );
-              final learnings = dailyPostAnalysis['learnings'] ?? [];
-              final beneficial = dailyPostAnalysis['beneficialWork'] ?? [];
-              if (learnings.isEmpty && beneficial.isEmpty) {
+              if (newsLearnings.isEmpty) {
                 stdout.writeln('[INFO] DailyPost analysis returned no items');
               }
               if (aiAnalysis != null) {
                 aiAnalysis = AIAnalysisResult(
                   errorsAndIssues: aiAnalysis.errorsAndIssues,
                   nextImportantTasks: aiAnalysis.nextImportantTasks,
-                  beneficialWork: _mergeAnalysisItems(
-                      beneficial, aiAnalysis.beneficialWork),
+                  beneficialWork: aiAnalysis.beneficialWork,
                   highlights: aiAnalysis.highlights,
                   learnings:
-                      _mergeAnalysisItems(learnings, aiAnalysis.learnings),
+                      _mergeAnalysisItems(newsLearnings, aiAnalysis.learnings),
                   rawResponse: aiAnalysis.rawResponse,
                 );
               } else {
                 aiAnalysis = AIAnalysisResult(
                   errorsAndIssues: [],
                   nextImportantTasks: [],
-                  beneficialWork: beneficial,
+                  beneficialWork: [],
                   highlights: [],
-                  learnings: learnings,
+                  learnings: newsLearnings,
                   rawResponse: '',
                 );
               }

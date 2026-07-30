@@ -47,12 +47,8 @@ class ReportService {
       RequiredSection.highlights,
       copy,
     );
-    final beneficialWork = _requiredItems(
-      aiAnalysis?.beneficialWork ?? const [],
-      projectCommits,
-      RequiredSection.beneficialWork,
-      copy,
-    );
+    final beneficialWork =
+        _meaningfulItems(aiAnalysis?.beneficialWork ?? const []);
     final errorsAndIssues =
         _meaningfulItems(aiAnalysis?.errorsAndIssues ?? const []);
     final nextImportantTasks =
@@ -86,11 +82,13 @@ class ReportService {
       );
     }
 
-    _writeSection(
-      buffer,
-      copy.beneficialWorkTitle,
-      beneficialWork,
-    );
+    if (beneficialWork.isNotEmpty) {
+      _writeSection(
+        buffer,
+        copy.beneficialWorkTitle,
+        beneficialWork,
+      );
+    }
 
     return buffer.toString();
   }
@@ -126,7 +124,6 @@ class ReportService {
       switch (section) {
         RequiredSection.learnings => copy.learningFallback(summary),
         RequiredSection.highlights => copy.highlightFallback(summary),
-        RequiredSection.beneficialWork => copy.beneficialWorkFallback(summary),
       }
     ];
   }
@@ -182,7 +179,6 @@ class ReportService {
 enum RequiredSection {
   learnings,
   highlights,
-  beneficialWork,
 }
 
 class ReportCopy {
@@ -196,7 +192,6 @@ class ReportCopy {
   final String emptyWorkSummary;
   final String Function(String summary) learningFallback;
   final String Function(String summary) highlightFallback;
-  final String Function(String summary) beneficialWorkFallback;
 
   const ReportCopy({
     required this.title,
@@ -209,7 +204,6 @@ class ReportCopy {
     required this.emptyWorkSummary,
     required this.learningFallback,
     required this.highlightFallback,
-    required this.beneficialWorkFallback,
   });
 
   factory ReportCopy.forLanguage(String language) {
@@ -217,40 +211,40 @@ class ReportCopy {
       'zh-CN' => ReportCopy(
           title: '今日复盘',
           workSummary: '工作摘要',
-          learningsTitle: '为了以后做得更好，我今天学到了什么、新用了哪些工具/方法/AI 工具，以及有哪些成功尝试或新实验？',
-          highlightsTitle: '工作中或行业里有哪些奇怪、不清楚、离谱、最困扰，或最近变化明显的事情？今天有没有暂时解决不了的问题？',
-          errorsTitle: '我或团队今天/最近几天犯的小错误或踩过的坑',
+          learningsTitle:
+              '为了赢在未来我学到了什么：AI 工具的使用、Prompt 优化，以及有效 AI 资源的分享（沉淀成自己有价值的智慧）',
+          highlightsTitle:
+              '工作中或行业里有哪些奇怪、不清楚、离谱、最困扰，或与上个月相比变化异常的事情？或今天我无法解决的问题？',
+          errorsTitle: '我或团队今天或最近几天犯的小错误或小失败',
           nextTasksTitle: '下一个工作日最重要或最困难的任务',
-          beneficialWorkTitle: '今天学到哪些新的开发技术或应用商店/平台政策？',
+          beneficialWorkTitle: '我今天做的哪些事对客户或行业有好处？',
           emptyWorkSummary: '今天记录到的工作内容',
           learningFallback: (summary) =>
               '我今天主要从“$summary”里得到提醒：类似问题以后要更早识别特殊分支，不要只按通用流程处理。',
           highlightFallback: (summary) =>
               '今天最需要留意的是“$summary”，因为它说明这个边界场景之前没有被完整覆盖，后面可能还会冒出类似情况。',
-          beneficialWorkFallback: (summary) =>
-              '今天可以沉淀的一点做法是：处理“$summary”这类问题时，把原始响应和明确的错误类型一起保留下来，方便后续定位和展示。',
         ),
       'zh-TW' => ReportCopy(
           title: '今日復盤',
           workSummary: '工作摘要',
-          learningsTitle: '為了以後做得更好，我今天學到了什麼、新用了哪些工具/方法/AI 工具，以及有哪些成功嘗試或新實驗？',
-          highlightsTitle: '工作中或產業裡有哪些奇怪、不清楚、離譜、最困擾，或最近變化明顯的事情？今天有沒有暫時解不了的問題？',
-          errorsTitle: '我或團隊今天/最近幾天犯的小錯或踩過的坑',
+          learningsTitle:
+              '為了贏在未來我學到了什麼：AI 工具的使用、Prompt 優化，以及有效 AI 資源的分享（沉澱成自己有價值的智慧）',
+          highlightsTitle:
+              '工作中或產業裡有哪些奇怪、不清楚、離譜、最困擾，或與上個月相比變化異常的事情？或今天我無法解決的問題？',
+          errorsTitle: '我或團隊今天或最近幾天犯的小錯誤或小失敗',
           nextTasksTitle: '下一個工作日最重要或最困難的任務',
-          beneficialWorkTitle: '今天學到哪些新的開發技術或 App Store/平台政策？',
+          beneficialWorkTitle: '我今天做的哪些事對客戶或產業有好處？',
           emptyWorkSummary: '今天記錄到的工作內容',
           learningFallback: (summary) =>
               '我今天主要從「$summary」裡得到提醒：類似問題以後要更早識別特殊分支，不要只按通用流程處理。',
           highlightFallback: (summary) =>
               '今天最需要留意的是「$summary」，因為它說明這個邊界情境之前沒有被完整覆蓋，後面可能還會冒出類似情況。',
-          beneficialWorkFallback: (summary) =>
-              '今天可以沉澱的一點做法是：處理「$summary」這類問題時，把原始回應和明確的錯誤類型一起保留下來，方便後續定位和展示。',
         ),
       _ => ReportCopy(
           title: 'Reflect Today',
-          workSummary: 'Work Summary',
+          workSummary: 'Work summary',
           learningsTitle:
-              'What did I learn for the purpose of future winning, what new tools, methods, or AI tools did I use, and what success or new experiments did I have?',
+              'What I Learned to Win in the Future: Use of AI Tools, Prompt Optimization, and Sharing of Effective AI Resources',
           highlightsTitle:
               'Things at work or in the industry that are strange, unclear, ridiculous, most troubling, or oddly changed since last month? Or issues I\'m unable to solve today?',
           errorsTitle:
@@ -258,14 +252,12 @@ class ReportCopy {
           nextTasksTitle:
               'The most important or difficult tasks for the next working day',
           beneficialWorkTitle:
-              'What new development techniques or new app store policies did I learn about today?',
+              'What things I did today are good for customers or industry?',
           emptyWorkSummary: 'the recorded work items for this report',
           learningFallback: (summary) =>
               'I used today\'s work on $summary as the main learning signal, especially for how to make similar changes easier to reason about next time.',
           highlightFallback: (summary) =>
               'The main thing I need to keep an eye on is $summary, because it is the clearest source of follow-up risk in today\'s commits.',
-          beneficialWorkFallback: (summary) =>
-              'One useful development habit from today is to keep the original response and a clear error type together when handling work like $summary.',
         ),
     };
   }

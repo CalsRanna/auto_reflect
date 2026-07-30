@@ -198,7 +198,8 @@ class ConfigCommand extends Command {
   }
 
   Future<void> _setDailyPostDirectory(Config config) async {
-    config.dailyPostDirectory = argResults!['set-daily-post-directory'].toString();
+    config.dailyPostDirectory =
+        argResults!['set-daily-post-directory'].toString();
     await config.save();
     stdout.writeln('\nDailyPost directory set successfully');
     _show(config);

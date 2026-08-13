@@ -1,3 +1,4 @@
 build/
 # tapster distribution output
 dist/
+.dart_tool/

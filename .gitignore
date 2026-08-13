@@ -1,1 +1,3 @@
 build/
+# tapster distribution output
+dist/

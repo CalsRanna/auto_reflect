@@ -31,21 +31,33 @@ A sophisticated Dart command-line tool that automatically scans all Git projects
 
 ## Installation
 
-### Prerequisites
-- Dart SDK 3.5.4 or higher
-- Git command line tools
-- Access to user home directory for configuration
+### macOS (Homebrew)
 
-### Setup
 ```bash
-# Clone or navigate to project directory
-cd /path/to/auto_reflect
+# Add the tap repository
+brew tap CalsRanna/tap
 
-# Install dependencies
+# Install the CLI
+brew install journal
+```
+
+### Windows (Scoop)
+
+```powershell
+# Add the bucket repository
+scoop bucket add scoop-bucket https://github.com/CalsRanna/scoop-bucket
+
+# Install the CLI
+scoop install journal
+```
+
+### Build from Source
+
+```bash
+git clone https://github.com/CalsRanna/auto_reflect.git
+cd auto_reflect
 dart pub get
-
-# Activate globally (optional)
-dart pub global activate --source path .
+./compile.sh  # Outputs build/journal
 ```
 
 ## Usage

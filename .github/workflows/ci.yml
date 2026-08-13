@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          # 锁定版本，与 release workflow 及本地开发环境保持一致
+          sdk: 3.10.1
+
+      - run: dart pub get
+
+      - run: dart analyze
+

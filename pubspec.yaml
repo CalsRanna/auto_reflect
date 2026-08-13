@@ -13,7 +13,6 @@ dependencies:
   cli_spin: ^1.0.1
   http: ^1.2.2
   openai_dart: ^0.4.5
-  package_info_plus: ^8.1.1
   process_run: ^1.2.2
   yaml: ^3.1.2
   intl: ^0.18.1

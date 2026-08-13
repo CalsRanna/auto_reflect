@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 先建空 Release，各平台 job 并行 upload asset（已存在则跳过，保证重跑幂等）
+      # --draft=false 显式发布，避免 gh release create 留下草稿
+      - run: gh release view "${{ github.ref_name }}" >/dev/null 2>&1 || gh release create "${{ github.ref_name }}" --generate-notes --draft=false
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  publish:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            asset: journal-macos
+          - os: ubuntu-latest
+            asset: journal-linux
+          - os: windows-latest
+            asset: journal-windows.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.10.1
+
+      - run: dart pub get
+
+      - name: Resolve version from pubspec
+        shell: bash
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Compile
+        shell: bash
+        run: |
+          mkdir -p build
+          dart compile exe bin/auto_reflect.dart -o "build/${{ matrix.asset }}" -DJOURNAL_VERSION="$VERSION"
+
+      - name: Upload asset
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}" "build/${{ matrix.asset }}" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

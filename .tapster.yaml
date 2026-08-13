@@ -13,6 +13,7 @@ formula:
   # brew tap CalsRanna/tap → 仓库 CalsRanna/homebrew-tap
   tap: CalsRanna/tap
   asset: build/journal-macos
+  linux_asset: build/journal-linux
   # checksum 由远端 Release asset digest 权威解析（tapster publish 自动填充）
   dependencies: []
 

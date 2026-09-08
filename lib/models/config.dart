@@ -174,7 +174,7 @@ class Config {
     var currentDirectory = Directory.current;
     var homeDirectory = Platform.environment['HOME'];
     var profileDirectory = Platform.environment['USERPROFILE'];
-    var file = File('$currentDirectory/$name');
+    var file = File('${currentDirectory.path}/$name');
     if (await file.exists()) return file;
     var globalDirectory = homeDirectory ?? profileDirectory;
     if (globalDirectory == null) return null;

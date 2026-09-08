@@ -3,8 +3,54 @@ import 'package:openai_dart/openai_dart.dart';
 import '../models/config.dart';
 import '../models/git_commit.dart';
 import '../models/ai_analysis.dart';
+import 'git_service.dart';
 
 class Generator {
+  static Future<void> rewriteCommits(
+    Map<String, List<GitCommit>> projectCommits, {
+    required Config config,
+    required GitService gitService,
+    void Function(int processed, int total)? onProgress,
+  }) async {
+    final total =
+        projectCommits.values.fold<int>(0, (n, items) => n + items.length);
+    final failures = <String>[];
+    var processed = 0;
+
+    for (final entry in projectCommits.entries) {
+      final commits = entry.value;
+      for (var i = 0; i < commits.length; i++) {
+        final commit = commits[i];
+        onProgress?.call(++processed, total);
+        try {
+          final diff =
+              await gitService.getCommitDiff(commit.hash, commit.projectPath);
+          if (diff.trim().isEmpty) {
+            throw StateError('Commit diff is empty');
+          }
+          final message = await rewriteCommitMessage(diff, config: config);
+          commits[i] = GitCommit(
+            hash: commit.hash,
+            author: commit.author,
+            email: commit.email,
+            message: message,
+            date: commit.date,
+            projectPath: commit.projectPath,
+          );
+        } catch (e) {
+          failures.add('${entry.key} ${commit.hash}: $e');
+        }
+      }
+    }
+
+    if (failures.isNotEmpty) {
+      throw StateError(
+        'Failed to rewrite ${failures.length}/$total commits. '
+        'Report was not saved.\n${failures.join('\n')}',
+      );
+    }
+  }
+
   static Future<AIAnalysisResult> analyzeCommits(
     Map<String, List<GitCommit>> commits, {
     required Config config,
@@ -247,13 +293,34 @@ Return ONLY the work summary, nothing else.
       model: ChatCompletionModel.modelId(config.model),
       messages: [systemMessage, userMessage],
       temperature: 0.5,
-      maxTokens: 200,
+      maxTokens: 2048,
     );
 
     try {
-      var response = await client.createChatCompletion(request: request);
-      var content = response.choices.first.message.content ?? '';
-      return _sanitizeScalarText(content);
+      for (var attempt = 0; attempt < 3; attempt++) {
+        try {
+          final response = await client.createChatCompletion(request: request);
+          if (response.choices.isEmpty) {
+            throw StateError('AI returned no completion');
+          }
+          final choice = response.choices.first;
+          if (choice.finishReason != ChatCompletionFinishReason.stop) {
+            throw StateError(
+              'AI summary did not finish: ${choice.finishReason?.name ?? 'unknown'}',
+            );
+          }
+          final content = _sanitizeScalarText(choice.message.content ?? '');
+          if (content.isEmpty) {
+            throw StateError('AI returned an empty work summary');
+          }
+          return content;
+        } catch (_) {
+          if (attempt == 2) rethrow;
+          request = request.copyWith(maxTokens: request.maxTokens! * 2);
+          await Future<void>.delayed(Duration(seconds: attempt + 1));
+        }
+      }
+      throw StateError('Work summary generation failed');
     } finally {
       client.endSession();
     }

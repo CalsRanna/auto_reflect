@@ -81,6 +81,13 @@ journal --help
 journal --version
 ```
 
+With AI enabled, every commit must produce a complete, nonempty work summary.
+Failed requests, empty answers, and truncated answers are retried up to three
+attempts, with an increased output-token budget. A failed commit does not stop
+processing the remaining commits. If any summaries still fail, the command exits
+with an error listing the affected commits and does not write or overwrite the
+report. Original commit messages are used only when `--no-ai` is explicitly set.
+
 ### Folder Ignore Feature
 
 ```bash

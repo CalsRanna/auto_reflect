@@ -277,9 +277,10 @@ class ReflectCommand extends Command {
         }
 
         if (aiConfig.apiKey.isEmpty) {
-          stdout.writeln(
-              '[WARN] AI configuration is invalid or missing, skipping AI analysis');
-          stdout.writeln('Please run: journal config');
+          throw StateError(
+            'AI configuration is missing. Run journal config, or use --no-ai '
+            'to explicitly generate a report with original commit messages.',
+          );
         } else {
           // 统计所有需要处理的 commit 数量，用于进度显示
           var totalCommits = 0;
@@ -289,51 +290,19 @@ class ReflectCommand extends Command {
 
           // 基于 diff 生成工作内容摘要（默认行为）
           if (projectCommits.isNotEmpty && totalCommits > 0) {
-            var processedCount = 0;
             _spinner.start(
                 'Generating work summaries from commit diffs (1/$totalCommits)');
 
-            try {
-              for (var projectName in projectCommits.keys) {
-                final commits = projectCommits[projectName]!;
-                final rewrittenCommits = <GitCommit>[];
-
-                for (var commit in commits) {
-                  processedCount++;
-                  _spinner.text =
-                      'Generating work summaries from commit diffs ($processedCount/$totalCommits)';
-
-                  final diff = await gitService.getCommitDiff(
-                      commit.hash, commit.projectPath);
-
-                  if (diff.isEmpty) {
-                    rewrittenCommits.add(commit);
-                    continue;
-                  }
-
-                  final newMessage = await Generator.rewriteCommitMessage(
-                    diff,
-                    config: aiConfig,
-                  );
-
-                  rewrittenCommits.add(GitCommit(
-                    hash: commit.hash,
-                    author: commit.author,
-                    email: commit.email,
-                    message:
-                        newMessage.isNotEmpty ? newMessage : commit.message,
-                    date: commit.date,
-                    projectPath: commit.projectPath,
-                  ));
-                }
-
-                projectCommits[projectName] = rewrittenCommits;
-              }
-              _spinner.success();
-            } catch (e) {
-              _spinner.fail();
-              stdout.writeln('[WARN] Failed to generate work summaries: $e');
-            }
+            await Generator.rewriteCommits(
+              projectCommits,
+              config: aiConfig,
+              gitService: gitService,
+              onProgress: (processed, total) {
+                _spinner.text =
+                    'Generating work summaries from commit diffs ($processed/$total)';
+              },
+            );
+            _spinner.success();
           }
 
           // AI 多维分析 + DailyPost 分析 并发执行

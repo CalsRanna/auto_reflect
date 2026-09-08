@@ -81,11 +81,13 @@ journal --help
 journal --version
 ```
 
-With AI enabled, every commit must produce a complete, nonempty work summary.
-Failed requests, empty answers, and truncated answers are retried up to three
-attempts, with an increased output-token budget. A failed commit does not stop
-processing the remaining commits. If any summaries still fail, the command exits
-with an error listing the affected commits and does not write or overwrite the
+With AI enabled, all commit diffs from each project are sent together in one
+request. AI combines related commits into work items describing the project's
+completed work; the number of items is independent of the commit count.
+Project summary generation is attempted up to three times if a
+request fails or returns incomplete output, with an increased output-token
+budget. A failed project does not stop processing other projects. If any projects
+still fail, the command exits with an error and does not write or overwrite the
 report. Original commit messages are used only when `--no-ai` is explicitly set.
 
 ### Folder Ignore Feature

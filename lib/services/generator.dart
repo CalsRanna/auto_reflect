@@ -6,53 +6,51 @@ import '../models/ai_analysis.dart';
 import 'git_service.dart';
 
 class Generator {
-  static Future<void> rewriteCommits(
+  static Future<Map<String, List<String>>> generateProjectWork(
     Map<String, List<GitCommit>> projectCommits, {
     required Config config,
     required GitService gitService,
-    void Function(int processed, int total)? onProgress,
+    void Function(String project, int processed, int total)? onProgress,
   }) async {
-    final total =
-        projectCommits.values.fold<int>(0, (n, items) => n + items.length);
+    final projectWork = <String, List<String>>{};
     final failures = <String>[];
     var processed = 0;
 
     for (final entry in projectCommits.entries) {
       final commits = entry.value;
-      for (var i = 0; i < commits.length; i++) {
-        final commit = commits[i];
-        onProgress?.call(++processed, total);
-        try {
+      onProgress?.call(entry.key, ++processed, projectCommits.length);
+      if (commits.isEmpty) continue;
+      try {
+        final diffs = <String, String>{};
+        for (final commit in commits.reversed) {
           final diff =
               await gitService.getCommitDiff(commit.hash, commit.projectPath);
           if (diff.trim().isEmpty) {
-            throw StateError('Commit diff is empty');
+            throw StateError('Commit ${commit.hash} diff is empty');
           }
-          final message = await rewriteCommitMessage(diff, config: config);
-          commits[i] = GitCommit(
-            hash: commit.hash,
-            author: commit.author,
-            email: commit.email,
-            message: message,
-            date: commit.date,
-            projectPath: commit.projectPath,
-          );
-        } catch (e) {
-          failures.add('${entry.key} ${commit.hash}: $e');
+          diffs[commit.hash] = diff;
         }
+        projectWork[entry.key] = await generateWorkItems(
+          entry.key,
+          diffs,
+          config: config,
+        );
+      } catch (e) {
+        failures.add('${entry.key}: $e');
       }
     }
 
     if (failures.isNotEmpty) {
       throw StateError(
-        'Failed to rewrite ${failures.length}/$total commits. '
+        'Failed to summarize ${failures.length}/${projectCommits.length} projects. '
         'Report was not saved.\n${failures.join('\n')}',
       );
     }
+    return projectWork;
   }
 
-  static Future<AIAnalysisResult> analyzeCommits(
-    Map<String, List<GitCommit>> commits, {
+  static Future<AIAnalysisResult> analyzeWork(
+    Map<String, List<String>> projectWork, {
     required Config config,
   }) async {
     var headers = {
@@ -68,7 +66,7 @@ class Generator {
 
     var languageInstruction = _getLanguageInstruction(config.language);
     var userLanguageReminder = _getUserLanguageReminder(config.language);
-    var commitsText = _formatCommitsForAI(commits);
+    var commitsText = _formatWorkForAI(projectWork);
 
     var writingStyle = _getPersonalWritingStyle(config.language);
 
@@ -78,7 +76,7 @@ $writingStyle
 
 You are helping me turn Git commits into a daily self-reflection.
 
-Based on the following Git commit records, write practical notes that sound like I wrote them after work. Stay grounded in the commits and avoid exaggeration or self-praise.
+Based on the following work summaries derived from Git diffs, write practical notes that sound like I wrote them after work. Stay grounded in the work and avoid exaggeration or self-praise.
 
 $commitsText
 
@@ -239,11 +237,9 @@ Return ONLY a JSON object in the following format, nothing else:
     }
   }
 
-  /// 使用 AI 根据 diff 生成工作内容摘要
-  ///
-  /// 读取每次提交的具体内容（diff），生成描述性工作内容，不再参考 commit message
-  static Future<String> rewriteCommitMessage(
-    String diff, {
+  static Future<List<String>> generateWorkItems(
+    String projectName,
+    Map<String, String> diffs, {
     required Config config,
   }) async {
     var headers = {
@@ -266,34 +262,40 @@ Return ONLY a JSON object in the following format, nothing else:
 $languageInstruction
 $writingStyle
 
-You are helping me summarize one commit for my daily work log.
+You are helping me summarize one project's commits for my daily work log.
 
-Based on the following git diff, generate a concise summary of what I actually did in this commit. Read the diff carefully and describe the actual changes and their purpose.
+Read all supplied commit diffs together and describe the work completed on this project today.
+The input commits are ordered from oldest to newest.
 
 Rules:
-1. Write 1 sentence describing the actual work completed
+1. Write one concise sentence per distinct piece of work completed
 2. Be specific about what was implemented, fixed, or changed
 3. Use clear, descriptive language - avoid generic descriptions like "updated code"
 4. Focus on the substance and purpose of the changes
 5. Write like a natural work-log note, not a marketing or architecture review sentence
+6. Combine commits that contribute to the same task or fix into one work item. Account for follow-up changes and reversions when describing the outcome.
+7. Choose the number of work items based on the actual work, not the number of commits. Do not return commit hashes or a commit-by-commit list.
+8. Cover the substantive work without duplicating items or inventing changes or benefits.
 
-Git Diff:
-$diff
-
-Return ONLY the work summary, nothing else.
+Return ONLY a JSON object in this format, without Markdown fences:
+{"workItems": ["One sentence describing completed work", "Another distinct piece of work"]}
 ''';
 
     var systemMessage = ChatCompletionMessage.system(content: prompt);
     var userMessage = ChatCompletionMessage.user(
       content: ChatCompletionUserMessageContent.string(
-          '$userLanguageReminder\n\n$diff'),
+        '$userLanguageReminder\n\n${jsonEncode({
+              'project': projectName,
+              'commits': diffs
+            })}',
+      ),
     );
 
     var request = CreateChatCompletionRequest(
       model: ChatCompletionModel.modelId(config.model),
       messages: [systemMessage, userMessage],
       temperature: 0.5,
-      maxTokens: 2048,
+      maxTokens: 2048 + diffs.length * 256,
     );
 
     try {
@@ -313,7 +315,21 @@ Return ONLY the work summary, nothing else.
           if (content.isEmpty) {
             throw StateError('AI returned an empty work summary');
           }
-          return content;
+          final json = jsonDecode(
+            content.replaceAll(RegExp(r'^```(?:json)?\s*|\s*```$'), ''),
+          );
+          final items = json is Map ? json['workItems'] : null;
+          if (items is! List || items.isEmpty) {
+            throw StateError('AI returned no work items');
+          }
+          final result = <String>[];
+          for (final item in items) {
+            if (item is! String || _sanitizeScalarText(item).isEmpty) {
+              throw StateError('AI returned an empty work item');
+            }
+            result.add(_sanitizeScalarText(item));
+          }
+          return result;
         } catch (_) {
           if (attempt == 2) rethrow;
           request = request.copyWith(maxTokens: request.maxTokens! * 2);
@@ -326,15 +342,13 @@ Return ONLY the work summary, nothing else.
     }
   }
 
-  static String _formatCommitsForAI(
-      Map<String, List<GitCommit>> projectCommits) {
+  static String _formatWorkForAI(Map<String, List<String>> projectWork) {
     final buffer = StringBuffer();
 
-    for (final projectName in projectCommits.keys) {
+    for (final projectName in projectWork.keys) {
       buffer.writeln('Project: $projectName');
-      final commits = projectCommits[projectName]!;
-      for (final commit in commits) {
-        buffer.writeln('- ${commit.message}');
+      for (final item in projectWork[projectName]!) {
+        buffer.writeln('- $item');
       }
       buffer.writeln('');
     }

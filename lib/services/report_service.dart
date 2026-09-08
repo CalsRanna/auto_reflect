@@ -1,11 +1,10 @@
 import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
-import '../models/git_commit.dart';
 import '../models/ai_analysis.dart';
 
 class ReportService {
-  Future<String> generateReport(Map<String, List<GitCommit>> projectCommits,
+  Future<String> generateReport(Map<String, List<String>> projectWork,
       String date, AIAnalysisResult? aiAnalysis,
       {String language = 'en-US'}) async {
     final buffer = StringBuffer();
@@ -19,17 +18,17 @@ class ReportService {
     buffer.writeln('## ${copy.workSummary}');
     buffer.writeln('');
 
-    // Add commit records
-    if (projectCommits.isNotEmpty) {
-      final sortedProjects = projectCommits.keys.toList()..sort();
+    // Add project work items
+    if (projectWork.isNotEmpty) {
+      final sortedProjects = projectWork.keys.toList()..sort();
 
       for (final projectName in sortedProjects) {
-        final commits = projectCommits[projectName]!;
+        final workItems = projectWork[projectName]!;
         buffer.writeln('### $projectName');
         buffer.writeln('');
 
-        for (final commit in commits) {
-          buffer.writeln('- ${commit.message}');
+        for (final item in workItems) {
+          buffer.writeln('- $item');
         }
         buffer.writeln('');
       }
@@ -37,13 +36,13 @@ class ReportService {
 
     final learnings = _requiredItems(
       aiAnalysis?.learnings ?? const [],
-      projectCommits,
+      projectWork,
       RequiredSection.learnings,
       copy,
     );
     final highlights = _requiredItems(
       aiAnalysis?.highlights ?? const [],
-      projectCommits,
+      projectWork,
       RequiredSection.highlights,
       copy,
     );
@@ -113,13 +112,13 @@ class ReportService {
 
   List<String> _requiredItems(
       List<String> items,
-      Map<String, List<GitCommit>> projectCommits,
+      Map<String, List<String>> projectWork,
       RequiredSection section,
       ReportCopy copy) {
     final meaningful = _meaningfulItems(items);
     if (meaningful.isNotEmpty) return meaningful;
 
-    final summary = _summarizeWork(projectCommits, copy);
+    final summary = _summarizeWork(projectWork, copy);
     return [
       switch (section) {
         RequiredSection.learnings => copy.learningFallback(summary),
@@ -151,22 +150,22 @@ class ReportService {
   }
 
   String _summarizeWork(
-      Map<String, List<GitCommit>> projectCommits, ReportCopy copy) {
-    final commitMessages = projectCommits.values
-        .expand((commits) => commits)
-        .map((commit) => commit.message.trim())
+      Map<String, List<String>> projectWork, ReportCopy copy) {
+    final workItems = projectWork.values
+        .expand((items) => items)
+        .map((item) => item.trim())
         .where(_isMeaningful)
         .map(_shorten)
         .toList();
 
-    if (commitMessages.isEmpty) {
+    if (workItems.isEmpty) {
       return copy.emptyWorkSummary;
     }
-    if (commitMessages.length == 1) return commitMessages.first;
-    if (commitMessages.length == 2) {
-      return '${commitMessages.first} and ${commitMessages[1]}';
+    if (workItems.length == 1) return workItems.first;
+    if (workItems.length == 2) {
+      return '${workItems.first} and ${workItems[1]}';
     }
-    return '${commitMessages.first}, ${commitMessages[1]}, and ${commitMessages.length - 2} other work items';
+    return '${workItems.first}, ${workItems[1]}, and ${workItems.length - 2} other work items';
   }
 
   String _shorten(String value) {

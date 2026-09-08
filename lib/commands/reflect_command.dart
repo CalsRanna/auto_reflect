@@ -269,6 +269,10 @@ class ReflectCommand extends Command {
           await _getProjectStats(projectCommits, ignoredProjectsWithCommits);
       stdout.writeln(stat);
 
+      var projectWork = {
+        for (final entry in projectCommits.entries)
+          entry.key: entry.value.map((commit) => commit.message).toList(),
+      };
       AIAnalysisResult? aiAnalysis;
       if (useAI) {
         var aiConfig = await Config.load();
@@ -282,32 +286,26 @@ class ReflectCommand extends Command {
             'to explicitly generate a report with original commit messages.',
           );
         } else {
-          // 统计所有需要处理的 commit 数量，用于进度显示
-          var totalCommits = 0;
-          for (var commits in projectCommits.values) {
-            totalCommits += commits.length;
-          }
-
-          // 基于 diff 生成工作内容摘要（默认行为）
-          if (projectCommits.isNotEmpty && totalCommits > 0) {
+          // 按项目批量分析所有提交的 diff。
+          if (projectCommits.isNotEmpty) {
             _spinner.start(
-                'Generating work summaries from commit diffs (1/$totalCommits)');
+                'Generating work summaries by project (1/${projectCommits.length})');
 
-            await Generator.rewriteCommits(
+            projectWork = await Generator.generateProjectWork(
               projectCommits,
               config: aiConfig,
               gitService: gitService,
-              onProgress: (processed, total) {
+              onProgress: (project, processed, total) {
                 _spinner.text =
-                    'Generating work summaries from commit diffs ($processed/$total)';
+                    'Generating work summaries for $project ($processed/$total projects)';
               },
             );
             _spinner.success();
           }
 
           // AI 多维分析 + DailyPost 分析 并发执行
-          final commitFuture = Generator.analyzeCommits(
-            projectCommits,
+          final commitFuture = Generator.analyzeWork(
+            projectWork,
             config: aiConfig,
           );
 
@@ -368,7 +366,7 @@ class ReflectCommand extends Command {
 
       final reportService = ReportService();
       final report = await reportService.generateReport(
-          projectCommits, // 只使用未被忽略的项目生成报告
+          projectWork,
           today,
           aiAnalysis ??
               AIAnalysisResult(

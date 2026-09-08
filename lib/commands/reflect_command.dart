@@ -273,6 +273,10 @@ class ReflectCommand extends Command {
         for (final entry in projectCommits.entries)
           entry.key: entry.value.map((commit) => commit.message).toList(),
       };
+      final reportService = ReportService();
+      final prioritizeMistake = useAI &&
+          DateFormat('yyyy-MM-dd').parseStrict(today).weekday ==
+              DateTime.friday;
       AIAnalysisResult? aiAnalysis;
       if (useAI) {
         var aiConfig = await Config.load();
@@ -307,6 +311,7 @@ class ReflectCommand extends Command {
           final commitFuture = Generator.analyzeWork(
             projectWork,
             config: aiConfig,
+            prioritizeMistake: prioritizeMistake,
           );
 
           // 用 NewsService 自动抓取 AI 日报
@@ -364,7 +369,6 @@ class ReflectCommand extends Command {
         }
       }
 
-      final reportService = ReportService();
       final report = await reportService.generateReport(
           projectWork,
           today,
@@ -385,6 +389,11 @@ class ReflectCommand extends Command {
 
       // 使用新的完成格式
       stdout.writeln('\nReflect completed ($reportPath)');
+      if (prioritizeMistake && (aiAnalysis?.errorsAndIssues.isEmpty ?? true)) {
+        stdout.writeln(
+            '[WARN] No evidence-based content was generated for "Small mistakes or failures". '
+            'That section was omitted; other report content was saved.');
+      }
     } catch (e) {
       _spinner.fail();
       handleError('Error generating log: $e');

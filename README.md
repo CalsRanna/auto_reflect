@@ -90,6 +90,18 @@ budget. A failed project does not stop processing other projects. If any project
 still fail, the command exits with an error and does not write or overwrite the
 report. Original commit messages are used only when `--no-ai` is explicitly set.
 
+Report section content has hard character limits: work summary 9999; learnings,
+highlights, and mistakes 999 each; next tasks 400; customer/industry benefits 2000.
+The section heading is excluded; spaces, newlines, Markdown bullets, and project
+subheadings are included. Prompts request concise output, and any remaining
+overflow is shortened with an ellipsis when the report is written.
+
+With AI enabled, Friday reports prioritize identifying at least one mistake or
+failure grounded in the work. If no evidence-based entry is generated, that
+section is omitted, other content is saved normally, and a warning is printed
+after completion. This section is optional on other days. The rule uses the report
+date (including `--date`) and does not read historical reports.
+
 ### Folder Ignore Feature
 
 ```bash

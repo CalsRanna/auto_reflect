@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import '../models/ai_analysis.dart';
+import '../models/report_limits.dart';
 
 class ReportService {
   Future<String> generateReport(Map<String, List<String>> projectWork,
@@ -15,24 +16,24 @@ class ReportService {
     buffer.writeln('# ${copy.title} - $formattedDate');
     buffer.writeln('');
 
-    buffer.writeln('## ${copy.workSummary}');
-    buffer.writeln('');
-
+    final workBuffer = StringBuffer();
     // Add project work items
     if (projectWork.isNotEmpty) {
       final sortedProjects = projectWork.keys.toList()..sort();
 
       for (final projectName in sortedProjects) {
         final workItems = projectWork[projectName]!;
-        buffer.writeln('### $projectName');
-        buffer.writeln('');
+        workBuffer.writeln('### $projectName');
+        workBuffer.writeln('');
 
         for (final item in workItems) {
-          buffer.writeln('- $item');
+          workBuffer.writeln('- $item');
         }
-        buffer.writeln('');
+        workBuffer.writeln('');
       }
     }
+    _writeSectionContent(buffer, copy.workSummary, workBuffer.toString(),
+        ReportLimits.workSummary);
 
     final learnings = _requiredItems(
       aiAnalysis?.learnings ?? const [],
@@ -57,12 +58,14 @@ class ReportService {
       buffer,
       copy.learningsTitle,
       learnings,
+      ReportLimits.learnings,
     );
 
     _writeSection(
       buffer,
       copy.highlightsTitle,
       highlights,
+      ReportLimits.highlights,
     );
 
     if (errorsAndIssues.isNotEmpty) {
@@ -70,6 +73,7 @@ class ReportService {
         buffer,
         copy.errorsTitle,
         errorsAndIssues,
+        ReportLimits.errorsAndIssues,
       );
     }
 
@@ -78,6 +82,7 @@ class ReportService {
         buffer,
         copy.nextTasksTitle,
         nextImportantTasks,
+        ReportLimits.nextImportantTasks,
       );
     }
 
@@ -86,6 +91,7 @@ class ReportService {
         buffer,
         copy.beneficialWorkTitle,
         beneficialWork,
+        ReportLimits.beneficialWork,
       );
     }
 
@@ -101,13 +107,28 @@ class ReportService {
     await file.writeAsString(content);
   }
 
-  void _writeSection(StringBuffer buffer, String title, List<String> items) {
+  void _writeSection(
+      StringBuffer buffer, String title, List<String> items, int maxLength) {
+    _writeSectionContent(
+        buffer, title, items.map((item) => '- $item').join('\n'), maxLength);
+  }
+
+  void _writeSectionContent(
+      StringBuffer buffer, String title, String content, int maxLength) {
     buffer.writeln('## $title');
     buffer.writeln('');
-    for (final item in items) {
-      buffer.writeln('- $item');
-    }
+    // Reserve the leading blank line and the two trailing newlines.
+    buffer.writeln(_limitText(content.trimRight(), maxLength - 3));
     buffer.writeln('');
+  }
+
+  String _limitText(String content, int maxLength) {
+    if (content.length <= maxLength) return content;
+    var end = maxLength - 1;
+    // Keep UTF-16 surrogate pairs intact when adding the ellipsis.
+    final last = content.codeUnitAt(end - 1);
+    if (last >= 0xD800 && last <= 0xDBFF) end--;
+    return '${content.substring(0, end).trimRight()}…';
   }
 
   List<String> _requiredItems(

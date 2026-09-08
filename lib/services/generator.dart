@@ -3,6 +3,7 @@ import 'package:openai_dart/openai_dart.dart';
 import '../models/config.dart';
 import '../models/git_commit.dart';
 import '../models/ai_analysis.dart';
+import '../models/report_limits.dart';
 import 'git_service.dart';
 
 class Generator {
@@ -34,6 +35,7 @@ class Generator {
           entry.key,
           diffs,
           config: config,
+          maxCharacters: ReportLimits.workSummary ~/ projectCommits.length,
         );
       } catch (e) {
         failures.add('${entry.key}: $e');
@@ -52,6 +54,7 @@ class Generator {
   static Future<AIAnalysisResult> analyzeWork(
     Map<String, List<String>> projectWork, {
     required Config config,
+    bool prioritizeMistake = false,
   }) async {
     var headers = {
       'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
@@ -69,6 +72,13 @@ class Generator {
     var commitsText = _formatWorkForAI(projectWork);
 
     var writingStyle = _getPersonalWritingStyle(config.language);
+    final mistakeRequirement = prioritizeMistake
+        ? 'This is a Friday report, the weekly checkpoint for mistakes and failures. '
+            'Prioritize identifying at least one concrete, evidence-based mistake '
+            'or failure when the supplied work supports it. Do not invent events, blame, or personal admissions '
+            'unsupported by the work. If no honest mistake can be identified, '
+            'return an empty errorsAndIssues array and generate all other fields normally.'
+        : 'errorsAndIssues is optional and may be empty when there is no honest signal.';
 
     var prompt = '''
 $languageInstruction
@@ -91,12 +101,20 @@ Analyze the commits from multiple dimensions and return the results in the follo
 }
 
 CRITICAL REQUIREMENTS:
+0. Character limits apply to each field's ENTIRE array, not each item:
+   - learnings: ${ReportLimits.learnings}
+   - highlights: ${ReportLimits.highlights}
+   - errorsAndIssues: ${ReportLimits.errorsAndIssues}
+   - nextImportantTasks: ${ReportLimits.nextImportantTasks}
+   - beneficialWork: ${ReportLimits.beneficialWork}
+   Count characters, not words, including spaces, punctuation, bullet prefixes, and line breaks. Keep comfortably below these limits by prioritizing and writing concise, complete sentences.
+
 1. "errorsAndIssues" — Write as personal, confessional notes to myself:
    - Read each commit and ask: what did *I* do wrong that this commit reveals?
    - Use natural first-person voice: "I forgot to...", "I left dead code after...", "I over-engineered..."
    - NEVER describe what was fixed — describe what mistake I made.
    - Be honest but don't over-interpret. 1-2 items total is usually enough, not one per changed file.
-   - If a commit is pure cleanup/refactoring without real error, it's fine to return empty.
+   - $mistakeRequirement
 
 2. "highlights" field is MANDATORY - You MUST identify:
    - Technical challenges or blockers (difficult bugs, performance issues)
@@ -121,7 +139,7 @@ General Guidelines:
 - Base analysis strictly on commit information
 - Infer context from commit patterns (e.g., multiple commits on same file = difficult problem)
 - Look for keywords: "feat", "fix", "add", "refactor", "optimize", "experiment", "try", "test"
-- "errorsAndIssues", "nextImportantTasks", and "beneficialWork" are optional and may be empty when there is no honest signal
+- "nextImportantTasks" and "beneficialWork" are optional and may be empty when there is no honest signal
 - DO NOT leave required fields empty
 - Avoid corporate or AI-sounding phrases like "reusable pattern", "improving robustness", "clarifies the API contract", "downstream consumers", or "worth watching" unless those exact words are necessary
 - errorsAndIssues uses confessional first-person; other fields should still sound like my own notes
@@ -142,9 +160,17 @@ General Guidelines:
     );
 
     try {
-      var response = await client.createChatCompletion(request: request);
-      var content = response.choices.first.message.content ?? '';
-      return _parseAIResponse(content);
+      for (var attempt = 0;; attempt++) {
+        final response = await client.createChatCompletion(request: request);
+        final choice = response.choices.first;
+        final result = _parseAIResponse(choice.message.content ?? '');
+        if (!prioritizeMistake ||
+            choice.finishReason != ChatCompletionFinishReason.length ||
+            attempt == 2) {
+          return result;
+        }
+        request = request.copyWith(maxTokens: request.maxTokens! * 2);
+      }
     } finally {
       client.endSession();
     }
@@ -198,6 +224,7 @@ OUTPUT LANGUAGE FOR DAILY NEWS:
    - a platform, API, or pricing change that changes which tool I should reach for
 
 CRITICAL RULES:
+- The ENTIRE learnings array must fit within ${ReportLimits.learnings} characters, not words, including spaces, punctuation, bullet prefixes, and line breaks. Prioritize the most useful items and write concise, complete sentences.
 - Be SELECTIVE: only pick the 3-5 most important items. Quality over quantity. Skip trivial news.
 - Write from MY perspective, as personal notes to myself. Every item should feel like something I'd write down for my own reference — natural, conversational, first-person.
 - Focus on WHY it matters to me as a developer, not just WHAT the news said.
@@ -241,6 +268,7 @@ Return ONLY a JSON object in the following format, nothing else:
     String projectName,
     Map<String, String> diffs, {
     required Config config,
+    int maxCharacters = ReportLimits.workSummary,
   }) async {
     var headers = {
       'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
@@ -276,6 +304,7 @@ Rules:
 6. Combine commits that contribute to the same task or fix into one work item. Account for follow-up changes and reversions when describing the outcome.
 7. Choose the number of work items based on the actual work, not the number of commits. Do not return commit hashes or a commit-by-commit list.
 8. Cover the substantive work without duplicating items or inventing changes or benefits.
+9. Keep ALL work items together within $maxCharacters characters, not words, including spaces, punctuation, bullet prefixes, and line breaks. Prioritize substantive work and write concise, complete sentences.
 
 Return ONLY a JSON object in this format, without Markdown fences:
 {"workItems": ["One sentence describing completed work", "Another distinct piece of work"]}

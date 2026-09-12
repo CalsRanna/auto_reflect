@@ -154,8 +154,8 @@ ignore: temp,node_modules,.git
 ## 待实现功能
 
 ### 测试覆盖
-- **当前状态**：项目中未发现测试文件
-- **建议**：为核心服务（GitService、Config、ReportService）添加单元测试
+- **当前状态**：`test/models/config_test.dart` 覆盖 Config 加载、默认值与 ignore 解析；CI 已接入 `dart test`
+- **建议**：继续为核心服务（GitService、ReportService）添加单元测试
 - **测试框架**：使用 Dart 内置的 `test` 包
 
 ## 开发注意事项

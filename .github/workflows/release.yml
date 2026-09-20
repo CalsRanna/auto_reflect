@@ -37,7 +37,7 @@ jobs:
 
       - uses: dart-lang/setup-dart@v1
         with:
-          sdk: 3.10.1
+          sdk: 3.13.2
 
       - run: dart pub get
 

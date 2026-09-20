@@ -354,7 +354,7 @@ lib/
 - `args ^2.6.0`: Command-line argument parsing
 - `cli_spin ^1.0.1`: CLI loading animations
 - `http ^1.2.2`: HTTP client for API communication
-- `openai_dart ^0.4.5`: OpenAI API client
+- `openai_dart ^9.0.0`: OpenAI API client
 - `process_run ^1.2.2`: Process execution for Git commands
 - `yaml ^3.1.2`: YAML configuration parsing
 - `intl ^0.18.1`: Internationalization and date formatting

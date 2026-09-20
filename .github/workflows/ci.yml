@@ -15,7 +15,7 @@ jobs:
       - uses: dart-lang/setup-dart@v1
         with:
           # 锁定版本，与 release workflow 及本地开发环境保持一致
-          sdk: 3.10.1
+          sdk: 3.13.2
 
       - run: dart pub get
 

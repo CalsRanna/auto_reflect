@@ -57,16 +57,7 @@ class Generator {
     required Config config,
     bool prioritizeMistake = false,
   }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
-      'X-Title': 'Auto Reflect',
-    };
-
-    var client = OpenAIClient(
-      apiKey: config.apiKey,
-      baseUrl: config.baseUrl,
-      headers: headers,
-    );
+    var client = _createClient(config);
 
     var languageInstruction = _getLanguageInstruction(config.language);
     var userLanguageReminder = _getUserLanguageReminder(config.language);
@@ -147,27 +138,25 @@ General Guidelines:
 - Return strictly in JSON format without other explanatory text
 ''';
 
-    var systemMessage = ChatCompletionMessage.system(content: prompt);
-    var userMessage = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string(
-          '$userLanguageReminder\n\n$commitsText'),
-    );
+    var systemMessage = ChatMessage.system(prompt);
+    var userMessage = ChatMessage.user('$userLanguageReminder\n\n$commitsText');
 
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(config.model),
+    var request = ChatCompletionCreateRequest(
+      model: config.model,
       messages: [systemMessage, userMessage],
+      responseFormat: ResponseFormat.jsonObject(),
       temperature: 0.7,
       maxTokens: 1600,
     );
 
     try {
       for (var attempt = 0;; attempt++) {
-        final response = await client.createChatCompletion(request: request);
+        final response = await client.chat.completions.create(request);
         final choice = response.choices.first;
         final content = choice.message.content ?? '';
         final result = _parseAIResponse(content);
         if (prioritizeMistake &&
-            choice.finishReason == ChatCompletionFinishReason.length &&
+            choice.finishReason == FinishReason.length &&
             attempt < _maxLimitAttempts - 1) {
           request = request.copyWith(maxTokens: request.maxTokens! * 2);
           continue;
@@ -196,7 +185,7 @@ General Guidelines:
         request = _withLimitFeedback(request, content, feedback);
       }
     } finally {
-      client.endSession();
+      client.close();
     }
   }
 
@@ -237,16 +226,14 @@ General Guidelines:
 
   /// Appends the rejected [previousContent] and [feedback] to the conversation
   /// so the next completion can rewrite it shorter.
-  static CreateChatCompletionRequest _withLimitFeedback(
-      CreateChatCompletionRequest request,
+  static ChatCompletionCreateRequest _withLimitFeedback(
+      ChatCompletionCreateRequest request,
       String previousContent,
       String feedback) {
     return request.copyWith(messages: [
       ...request.messages,
-      ChatCompletionMessage.assistant(content: previousContent),
-      ChatCompletionMessage.user(
-        content: ChatCompletionUserMessageContent.string(feedback),
-      ),
+      ChatMessage.assistant(content: previousContent),
+      ChatMessage.user(feedback),
     ]);
   }
 
@@ -257,16 +244,7 @@ General Guidelines:
     String dailyPostContent, {
     required Config config,
   }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
-      'X-Title': 'Auto Reflect',
-    };
-
-    var client = OpenAIClient(
-      apiKey: config.apiKey,
-      baseUrl: config.baseUrl,
-      headers: headers,
-    );
+    var client = _createClient(config);
 
     var languageInstruction = _getLanguageInstruction(config.language);
     var userLanguageReminder = _getUserLanguageReminder(config.language);
@@ -318,21 +296,20 @@ Return ONLY a JSON object in the following format, nothing else:
 }
 ''';
 
-    var systemMessage = ChatCompletionMessage.system(content: prompt);
-    var userMessage = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string(
-          '$userLanguageReminder\n\nDaily Tech News Digest:\n$dailyPostContent'),
-    );
+    var systemMessage = ChatMessage.system(prompt);
+    var userMessage = ChatMessage.user(
+        '$userLanguageReminder\n\nDaily Tech News Digest:\n$dailyPostContent');
 
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(config.model),
+    var request = ChatCompletionCreateRequest(
+      model: config.model,
       messages: [systemMessage, userMessage],
+      responseFormat: ResponseFormat.jsonObject(),
       temperature: 0.5,
     );
 
     try {
       for (var attempt = 0;; attempt++) {
-        final response = await client.createChatCompletion(request: request);
+        final response = await client.chat.completions.create(request);
         final content = response.choices.first.message.content ?? '';
         final learnings = _parseDailyPostResponse(content);
         final feedback =
@@ -345,7 +322,7 @@ Return ONLY a JSON object in the following format, nothing else:
         request = _withLimitFeedback(request, content, feedback);
       }
     } finally {
-      client.endSession();
+      client.close();
     }
   }
 
@@ -355,16 +332,7 @@ Return ONLY a JSON object in the following format, nothing else:
     required Config config,
     int maxCharacters = ReportLimits.workSummary,
   }) async {
-    var headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
-      'X-Title': 'Auto Reflect',
-    };
-
-    var client = OpenAIClient(
-      apiKey: config.apiKey,
-      baseUrl: config.baseUrl,
-      headers: headers,
-    );
+    var client = _createClient(config);
 
     var languageInstruction = _getLanguageInstruction(config.language);
     var userLanguageReminder = _getUserLanguageReminder(config.language);
@@ -398,19 +366,18 @@ Return ONLY a JSON object in this format, without Markdown fences:
 {"workItems": ["One sentence describing completed work", "Another distinct piece of work"]}
 ''';
 
-    var systemMessage = ChatCompletionMessage.system(content: prompt);
-    var userMessage = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string(
-        '$userLanguageReminder\n\n${jsonEncode({
-              'project': projectName,
-              'commits': diffs
-            })}',
-      ),
+    var systemMessage = ChatMessage.system(prompt);
+    var userMessage = ChatMessage.user(
+      '$userLanguageReminder\n\n${jsonEncode({
+            'project': projectName,
+            'commits': diffs
+          })}',
     );
 
-    var request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(config.model),
+    var request = ChatCompletionCreateRequest(
+      model: config.model,
       messages: [systemMessage, userMessage],
+      responseFormat: ResponseFormat.jsonObject(),
       temperature: 0.5,
       maxTokens: 2048 + diffs.length * 256,
     );
@@ -419,12 +386,12 @@ Return ONLY a JSON object in this format, without Markdown fences:
       var limitAttempts = 0;
       for (var attempt = 0; attempt < 3; attempt++) {
         try {
-          final response = await client.createChatCompletion(request: request);
+          final response = await client.chat.completions.create(request);
           if (response.choices.isEmpty) {
             throw StateError('AI returned no completion');
           }
           final choice = response.choices.first;
-          if (choice.finishReason != ChatCompletionFinishReason.stop) {
+          if (choice.finishReason != FinishReason.stop) {
             throw StateError(
               'AI summary did not finish: ${choice.finishReason?.name ?? 'unknown'}',
             );
@@ -465,8 +432,21 @@ Return ONLY a JSON object in this format, without Markdown fences:
       }
       throw StateError('Work summary generation failed');
     } finally {
-      client.endSession();
+      client.close();
     }
+  }
+
+  static OpenAIClient _createClient(Config config) {
+    return OpenAIClient(
+      config: OpenAIConfig(
+        authProvider: ApiKeyProvider(config.apiKey),
+        baseUrl: config.baseUrl,
+        defaultHeaders: const {
+          'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
+          'X-Title': 'Auto Reflect',
+        },
+      ),
+    );
   }
 
   static String _formatWorkForAI(Map<String, List<String>> projectWork) {

@@ -307,27 +307,25 @@ class DoctorCommand extends Command {
     return value;
   }
 
-  Future<CreateChatCompletionResponse> _connect(Config config) async {
-    final headers = {
-      'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
-      'X-Title': 'Auto Reflect',
-    };
+  Future<ChatCompletion> _connect(Config config) async {
     final client = OpenAIClient(
-      apiKey: config.apiKey,
-      baseUrl: config.baseUrl,
-      headers: headers,
+      config: OpenAIConfig(
+        authProvider: ApiKeyProvider(config.apiKey),
+        baseUrl: config.baseUrl,
+        defaultHeaders: const {
+          'HTTP-Referer': 'https://github.com/CalsRanna/auto_reflect',
+          'X-Title': 'Auto Reflect',
+        },
+      ),
     );
-    final userMessage = ChatCompletionMessage.user(
-      content: ChatCompletionUserMessageContent.string('hi'),
-    );
-    final request = CreateChatCompletionRequest(
-      model: ChatCompletionModel.modelId(config.model),
-      messages: [userMessage],
+    final request = ChatCompletionCreateRequest(
+      model: config.model,
+      messages: [ChatMessage.user('hi')],
     );
     try {
-      return await client.createChatCompletion(request: request);
+      return await client.chat.completions.create(request);
     } finally {
-      client.endSession();
+      client.close();
     }
   }
 }

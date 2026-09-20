@@ -35,7 +35,8 @@ class Generator {
           entry.key,
           diffs,
           config: config,
-          maxCharacters: ReportLimits.workSummary ~/ projectCommits.length,
+          maxCharacters: ReportLimits.bodyBudget(ReportLimits.workSummary) ~/
+              projectCommits.length,
         );
       } catch (e) {
         failures.add('${entry.key}: $e');
@@ -102,12 +103,12 @@ Analyze the commits from multiple dimensions and return the results in the follo
 
 CRITICAL REQUIREMENTS:
 0. Character limits apply to each field's ENTIRE array, not each item:
-   - learnings: ${ReportLimits.learnings}
-   - highlights: ${ReportLimits.highlights}
-   - errorsAndIssues: ${ReportLimits.errorsAndIssues}
-   - nextImportantTasks: ${ReportLimits.nextImportantTasks}
-   - beneficialWork: ${ReportLimits.beneficialWork}
-   Count characters, not words, including spaces, punctuation, bullet prefixes, and line breaks. Keep comfortably below these limits by prioritizing and writing concise, complete sentences.
+   - learnings: ${_analysisLimits['learnings']}
+   - highlights: ${_analysisLimits['highlights']}
+   - errorsAndIssues: ${_analysisLimits['errorsAndIssues']}
+   - nextImportantTasks: ${_analysisLimits['nextImportantTasks']}
+   - beneficialWork: ${_analysisLimits['beneficialWork']}
+   Count characters, not words, including spaces, punctuation, bullet prefixes ("- ") and line breaks between items. Keep comfortably below these limits by prioritizing and writing concise, complete sentences. Output that exceeds a limit will be rejected and you will be asked to rewrite it shorter.
 
 1. "errorsAndIssues" — Write as personal, confessional notes to myself:
    - Read each commit and ask: what did *I* do wrong that this commit reveals?
@@ -163,17 +164,90 @@ General Guidelines:
       for (var attempt = 0;; attempt++) {
         final response = await client.createChatCompletion(request: request);
         final choice = response.choices.first;
-        final result = _parseAIResponse(choice.message.content ?? '');
-        if (!prioritizeMistake ||
-            choice.finishReason != ChatCompletionFinishReason.length ||
-            attempt == 2) {
-          return result;
+        final content = choice.message.content ?? '';
+        final result = _parseAIResponse(content);
+        if (prioritizeMistake &&
+            choice.finishReason == ChatCompletionFinishReason.length &&
+            attempt < _maxLimitAttempts - 1) {
+          request = request.copyWith(maxTokens: request.maxTokens! * 2);
+          continue;
         }
-        request = request.copyWith(maxTokens: request.maxTokens! * 2);
+        final feedback = _overLimitFeedback({
+          'learnings': (result.learnings, _analysisLimits['learnings']!),
+          'highlights': (result.highlights, _analysisLimits['highlights']!),
+          'errorsAndIssues': (
+            result.errorsAndIssues,
+            _analysisLimits['errorsAndIssues']!
+          ),
+          'nextImportantTasks': (
+            result.nextImportantTasks,
+            _analysisLimits['nextImportantTasks']!
+          ),
+          'beneficialWork': (
+            result.beneficialWork,
+            _analysisLimits['beneficialWork']!
+          ),
+        });
+        if (feedback == null) return result;
+        if (attempt >= _maxLimitAttempts - 1) {
+          throw StateError(
+              'AI analysis exceeded section limits after $_maxLimitAttempts attempts:\n$feedback');
+        }
+        request = _withLimitFeedback(request, content, feedback);
       }
     } finally {
       client.endSession();
     }
+  }
+
+  /// Rendered-length budget for each field of [analyzeWork], measured the way
+  /// the report writes them.
+  static final _analysisLimits = <String, int>{
+    'learnings': ReportLimits.bodyBudget(ReportLimits.commitLearnings),
+    'highlights': ReportLimits.bodyBudget(ReportLimits.highlights),
+    'errorsAndIssues': ReportLimits.bodyBudget(ReportLimits.errorsAndIssues),
+    'nextImportantTasks':
+        ReportLimits.bodyBudget(ReportLimits.nextImportantTasks),
+    'beneficialWork': ReportLimits.bodyBudget(ReportLimits.beneficialWork),
+  };
+
+  /// How many times the model may be asked to rewrite over-limit output.
+  static const _maxLimitAttempts = 3;
+
+  /// Returns a correction message listing every field whose rendered length
+  /// exceeds its limit, or null when everything fits.
+  static String? _overLimitFeedback(
+      Map<String, (List<String> items, int limit)> fields) {
+    final lines = <String>[];
+    for (final entry in fields.entries) {
+      final (items, limit) = entry.value;
+      final length = ReportLimits.renderedLength(items);
+      if (length > limit) {
+        lines.add(
+            '- "${entry.key}" is $length characters but the limit is $limit (${length - limit} over).');
+      }
+    }
+    if (lines.isEmpty) return null;
+    return 'Your previous answer exceeded the character limits:\n${lines.join('\n')}\n'
+        'Rewrite the whole JSON object so that every field fits within its limit. '
+        'Shorten by dropping the least important items and tightening sentences, '
+        'not by cutting sentences off mid-way. Keep every other field as it was. '
+        'Return strictly the JSON object without other text.';
+  }
+
+  /// Appends the rejected [previousContent] and [feedback] to the conversation
+  /// so the next completion can rewrite it shorter.
+  static CreateChatCompletionRequest _withLimitFeedback(
+      CreateChatCompletionRequest request,
+      String previousContent,
+      String feedback) {
+    return request.copyWith(messages: [
+      ...request.messages,
+      ChatCompletionMessage.assistant(content: previousContent),
+      ChatCompletionMessage.user(
+        content: ChatCompletionUserMessageContent.string(feedback),
+      ),
+    ]);
   }
 
   /// 分析 DailyPost 文件内容，提取 learnings
@@ -199,6 +273,7 @@ General Guidelines:
     var targetLanguage = _languageName(config.language);
 
     var writingStyle = _getPersonalWritingStyle(config.language);
+    final newsLimit = ReportLimits.bodyBudget(ReportLimits.newsLearnings);
 
     var prompt = '''
 $languageInstruction
@@ -224,7 +299,7 @@ OUTPUT LANGUAGE FOR DAILY NEWS:
    - a platform, API, or pricing change that changes which tool I should reach for
 
 CRITICAL RULES:
-- The ENTIRE learnings array must fit within ${ReportLimits.learnings} characters, not words, including spaces, punctuation, bullet prefixes, and line breaks. Prioritize the most useful items and write concise, complete sentences.
+- The ENTIRE learnings array must fit within $newsLimit characters, not words, including spaces, punctuation, bullet prefixes ("- ") and line breaks between items. Prioritize the most useful items and write concise, complete sentences. Output that exceeds the limit will be rejected and you will be asked to rewrite it shorter.
 - Be SELECTIVE: only pick the 3-5 most important items. Quality over quantity. Skip trivial news.
 - Write from MY perspective, as personal notes to myself. Every item should feel like something I'd write down for my own reference — natural, conversational, first-person.
 - Focus on WHY it matters to me as a developer, not just WHAT the news said.
@@ -256,9 +331,19 @@ Return ONLY a JSON object in the following format, nothing else:
     );
 
     try {
-      var response = await client.createChatCompletion(request: request);
-      var content = response.choices.first.message.content ?? '';
-      return _parseDailyPostResponse(content);
+      for (var attempt = 0;; attempt++) {
+        final response = await client.createChatCompletion(request: request);
+        final content = response.choices.first.message.content ?? '';
+        final learnings = _parseDailyPostResponse(content);
+        final feedback =
+            _overLimitFeedback({'learnings': (learnings, newsLimit)});
+        if (feedback == null) return learnings;
+        if (attempt >= _maxLimitAttempts - 1) {
+          throw StateError(
+              'DailyPost learnings exceeded the limit after $_maxLimitAttempts attempts:\n$feedback');
+        }
+        request = _withLimitFeedback(request, content, feedback);
+      }
     } finally {
       client.endSession();
     }
@@ -285,6 +370,9 @@ Return ONLY a JSON object in the following format, nothing else:
     var userLanguageReminder = _getUserLanguageReminder(config.language);
 
     var writingStyle = _getPersonalWritingStyle(config.language);
+    // The project heading and its surrounding blank lines share the budget.
+    final itemsBudget =
+        maxCharacters - ReportLimits.renderedProjectLength(projectName, []);
 
     var prompt = '''
 $languageInstruction
@@ -304,7 +392,7 @@ Rules:
 6. Combine commits that contribute to the same task or fix into one work item. Account for follow-up changes and reversions when describing the outcome.
 7. Choose the number of work items based on the actual work, not the number of commits. Do not return commit hashes or a commit-by-commit list.
 8. Cover the substantive work without duplicating items or inventing changes or benefits.
-9. Keep ALL work items together within $maxCharacters characters, not words, including spaces, punctuation, bullet prefixes, and line breaks. Prioritize substantive work and write concise, complete sentences.
+9. Keep ALL work items together within $itemsBudget characters, not words, including spaces, punctuation, bullet prefixes ("- ") and line breaks between items. Prioritize substantive work and write concise, complete sentences. Output that exceeds the limit will be rejected and you will be asked to rewrite it shorter.
 
 Return ONLY a JSON object in this format, without Markdown fences:
 {"workItems": ["One sentence describing completed work", "Another distinct piece of work"]}
@@ -328,6 +416,7 @@ Return ONLY a JSON object in this format, without Markdown fences:
     );
 
     try {
+      var limitAttempts = 0;
       for (var attempt = 0; attempt < 3; attempt++) {
         try {
           final response = await client.createChatCompletion(request: request);
@@ -358,7 +447,16 @@ Return ONLY a JSON object in this format, without Markdown fences:
             }
             result.add(_sanitizeScalarText(item));
           }
-          return result;
+          final feedback =
+              _overLimitFeedback({'workItems': (result, itemsBudget)});
+          if (feedback == null) return result;
+          if (++limitAttempts >= _maxLimitAttempts) {
+            throw StateError(
+                'Work summary exceeded the limit after $_maxLimitAttempts attempts:\n$feedback');
+          }
+          request = _withLimitFeedback(request, content, feedback);
+          attempt--; // Length rewrites do not count against transport retries.
+          continue;
         } catch (_) {
           if (attempt == 2) rethrow;
           request = request.copyWith(maxTokens: request.maxTokens! * 2);

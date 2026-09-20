@@ -32,8 +32,7 @@ class ReportService {
         workBuffer.writeln('');
       }
     }
-    _writeSectionContent(buffer, copy.workSummary, workBuffer.toString(),
-        ReportLimits.workSummary);
+    _writeSectionContent(buffer, copy.workSummary, workBuffer.toString());
 
     final learnings = _requiredItems(
       aiAnalysis?.learnings ?? const [],
@@ -58,14 +57,12 @@ class ReportService {
       buffer,
       copy.learningsTitle,
       learnings,
-      ReportLimits.learnings,
     );
 
     _writeSection(
       buffer,
       copy.highlightsTitle,
       highlights,
-      ReportLimits.highlights,
     );
 
     if (errorsAndIssues.isNotEmpty) {
@@ -73,7 +70,6 @@ class ReportService {
         buffer,
         copy.errorsTitle,
         errorsAndIssues,
-        ReportLimits.errorsAndIssues,
       );
     }
 
@@ -82,7 +78,6 @@ class ReportService {
         buffer,
         copy.nextTasksTitle,
         nextImportantTasks,
-        ReportLimits.nextImportantTasks,
       );
     }
 
@@ -91,7 +86,6 @@ class ReportService {
         buffer,
         copy.beneficialWorkTitle,
         beneficialWork,
-        ReportLimits.beneficialWork,
       );
     }
 
@@ -107,28 +101,17 @@ class ReportService {
     await file.writeAsString(content);
   }
 
-  void _writeSection(
-      StringBuffer buffer, String title, List<String> items, int maxLength) {
-    _writeSectionContent(
-        buffer, title, items.map((item) => '- $item').join('\n'), maxLength);
+  void _writeSection(StringBuffer buffer, String title, List<String> items) {
+    _writeSectionContent(buffer, title, ReportLimits.renderBullets(items));
   }
 
-  void _writeSectionContent(
-      StringBuffer buffer, String title, String content, int maxLength) {
+  // Section length limits are enforced on the AI side (see Generator), so the
+  // content is written as-is and never truncated here.
+  void _writeSectionContent(StringBuffer buffer, String title, String content) {
     buffer.writeln('## $title');
     buffer.writeln('');
-    // Reserve the leading blank line and the two trailing newlines.
-    buffer.writeln(_limitText(content.trimRight(), maxLength - 3));
+    buffer.writeln(content.trimRight());
     buffer.writeln('');
-  }
-
-  String _limitText(String content, int maxLength) {
-    if (content.length <= maxLength) return content;
-    var end = maxLength - 1;
-    // Keep UTF-16 surrogate pairs intact when adding the ellipsis.
-    final last = content.codeUnitAt(end - 1);
-    if (last >= 0xD800 && last <= 0xDBFF) end--;
-    return '${content.substring(0, end).trimRight()}…';
   }
 
   List<String> _requiredItems(
